@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Infrastructure Roadmap · Build a Data Center</title>
+<style>
+/* ── RESET & BASE ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #0D1117;
+  --bg2:       #161B22;
+  --card:      #1C2128;
+  --card2:     #21262D;
+  --border:    #30363D;
+  --green:     #22C55E;
+  --amber:     #F59E0B;
+  --blue:      #3B82F6;
+  --purple:    #A855F7;
+  --red:       #F87171;
+  --white:     #E6EDF3;
+  --muted:     #8B949E;
+  --highlight: #FDE047;
+  --note-bg:   #1A1600;
+  --note-border:#78716C;
+  --search-hl: rgba(253,224,71,0.25);
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--white);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+}
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+mark.hl { background: var(--search-hl); color: inherit; border-radius: 2px; }
+
+/* ── TOP BAR ────────────────────────────────────────────── */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(13,17,23,0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.topbar-title { font-weight: 700; font-size: 13px; color: var(--amber); white-space: nowrap; }
+
+.search-wrap {
+  position: relative; flex: 1; min-width: 180px; max-width: 320px;
+}
+.search-wrap input {
+  width: 100%; padding: 6px 32px 6px 10px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--white); font-size: 13px;
+  outline: none; transition: border-color .2s;
+}
+.search-wrap input:focus { border-color: var(--blue); }
+.search-wrap input::placeholder { color: var(--muted); }
+.search-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1;
+  display: none;
+}
+.search-count {
+  font-size: 11px; color: var(--muted); white-space: nowrap;
+}
+
+.topbar-btn {
+  padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.topbar-btn:hover { border-color: var(--amber); color: var(--amber); }
+.topbar-btn.active { background: var(--amber); color: #000; border-color: var(--amber); }
+
+/* ── MAIN LAYOUT ────────────────────────────────────────── */
+.main { max-width: 960px; margin: 0 auto; padding: 20px; }
+
+/* ── THESIS BOX ─────────────────────────────────────────── */
+.thesis {
+  background: var(--card); border-left: 4px solid var(--red);
+  border-radius: 8px; padding: 14px 18px; margin-bottom: 22px;
+  font-size: 13px; line-height: 1.65;
+}
+.thesis strong { color: var(--red); }
+
+/* ── TABS ───────────────────────────────────────────────── */
+.tabs { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab {
+  padding: 7px 16px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: 1.5px solid var(--border); background: transparent;
+  color: var(--muted); transition: all .18s;
+}
+.tab.active { background: #1a1a2e; color: var(--white); border-color: #3a3a5e; }
+
+/* ── PANEL ──────────────────────────────────────────────── */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── PHASE GROUPS ───────────────────────────────────────── */
+.phase-group { margin-bottom: 28px; }
+.phase-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.phase-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── STEP CARD ──────────────────────────────────────────── */
+.step-card {
+  border-radius: 8px; margin-bottom: 8px; overflow: hidden;
+  border: 1px solid var(--border);
+  transition: border-color .18s, box-shadow .18s;
+  position: relative;
+}
+.step-card.highlighted {
+  border-color: var(--highlight) !important;
+  box-shadow: 0 0 0 1px var(--highlight);
+}
+.step-card.dimmed { opacity: 0.3; }
+.step-card.search-match { opacity: 1 !important; }
+
+.step-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; cursor: pointer;
+  background: var(--card); user-select: none;
+  transition: background .15s;
+}
+.step-header:hover { background: var(--card2); }
+
+.step-num {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0; color: #fff;
+}
+.step-info { flex: 1; min-width: 0; }
+.step-title { font-size: 13.5px; font-weight: 600; }
+.step-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+.step-actions {
+  display: flex; gap: 4px; flex-shrink: 0;
+}
+.action-btn {
+  width: 26px; height: 26px; border-radius: 5px; border: none;
+  background: transparent; cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); transition: background .15s, color .15s;
+}
+.action-btn:hover { background: var(--border); color: var(--white); }
+.action-btn.star-on { color: var(--highlight); }
+
+.chevron {
+  width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+  color: var(--muted); transition: transform .2s; flex-shrink: 0;
+}
+.step-card.open .chevron { transform: rotate(90deg); }
+
+.step-body {
+  display: none; background: var(--bg2);
+  border-top: 1px solid var(--border);
+  padding: 16px;
+}
+.step-card.open .step-body { display: block; }
+
+/* ── STEP BODY CONTENT ──────────────────────────────────── */
+.detail-text { font-size: 12.5px; color: var(--muted); line-height: 1.7; margin-bottom: 12px; }
+.detail-text strong { color: var(--white); }
+
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.tag {
+  display: inline-block; padding: 3px 9px; border-radius: 12px;
+  font-size: 10.5px; font-weight: 600; border: 1px solid;
+}
+
+.criteria-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.criteria-card {
+  background: var(--card); border-radius: 6px; padding: 10px 12px;
+  border-left: 3px solid;
+}
+.criteria-card .crit-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+.criteria-card .crit-body { font-size: 11px; color: var(--muted); line-height: 1.55; }
+
+/* ── MAP RESOURCES (Step 2) ─────────────────────────────── */
+.map-section { margin-top: 16px; }
+.map-section-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--green); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.map-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.map-card {
+  background: var(--card); border-radius: 8px; padding: 12px;
+  border: 1px solid var(--border); transition: border-color .18s;
+  cursor: pointer;
+}
+.map-card:hover { border-color: var(--green); }
+.map-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; margin-bottom: 6px; }
+.map-card-name { font-size: 12.5px; font-weight: 700; color: var(--white); }
+.map-card-badge {
+  font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+  background: rgba(34,197,94,0.15); color: var(--green); white-space: nowrap; flex-shrink: 0;
+}
+.map-card-desc { font-size: 11px; color: var(--muted); line-height: 1.55; margin-bottom: 8px; }
+.map-card-shows { font-size: 10px; color: var(--muted); }
+.map-card-shows span { color: var(--green); }
+.map-card-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; color: var(--green);
+  margin-top: 8px; text-decoration: none;
+}
+.map-card-link:hover { text-decoration: underline; }
+
+.screening-guide {
+  background: var(--card); border-radius: 8px; padding: 14px;
+  border: 1px solid var(--border); margin-bottom: 12px;
+}
+.screening-guide h4 { font-size: 12px; font-weight: 700; color: var(--amber); margin-bottom: 10px; }
+.screening-step {
+  display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start;
+}
+.screening-num {
+  width: 20px; height: 20px; border-radius: 50%; background: var(--amber);
+  color: #000; font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  margin-top: 1px;
+}
+.screening-text { font-size: 11.5px; color: var(--muted); line-height: 1.55; }
+.screening-text strong { color: var(--white); }
+
+/* ── INTERCONNECTION DETAIL (Step 3) ────────────────────── */
+.queue-viz {
+  background: var(--card); border-radius: 8px; padding: 14px; margin-bottom: 12px;
+}
+.queue-viz h4 { font-size: 12px; font-weight: 700; color: var(--amber); margin-bottom: 12px; }
+.queue-stages { display: flex; gap: 0; overflow-x: auto; }
+.queue-stage {
+  flex: 1; min-width: 100px; text-align: center; position: relative;
+  padding: 10px 6px;
+}
+.queue-stage:not(:last-child)::after {
+  content: '→'; position: absolute; right: -6px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); font-size: 16px;
+}
+.q-dot {
+  width: 32px; height: 32px; border-radius: 50%;
+  margin: 0 auto 6px; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+}
+.q-name { font-size: 10px; font-weight: 600; color: var(--white); margin-bottom: 3px; }
+.q-time { font-size: 9px; color: var(--muted); }
+
+.iso-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.iso-card { background: var(--card); border-radius: 6px; padding: 10px; border-left: 3px solid; }
+.iso-name { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+.iso-region { font-size: 10px; color: var(--muted); margin-bottom: 6px; }
+.iso-stat { font-size: 11px; color: var(--white); }
+
+/* ── AI STACK ───────────────────────────────────────────── */
+.stack { display: flex; flex-direction: column; gap: 8px; }
+.stack-layer {
+  border-radius: 8px; overflow: hidden; cursor: pointer;
+  border: 1px solid var(--border); transition: border-color .18s;
+}
+.stack-layer.highlighted { border-color: var(--highlight) !important; box-shadow: 0 0 0 1px var(--highlight); }
+.stack-layer.dimmed { opacity: 0.3; }
+.stack-layer.search-match { opacity: 1 !important; }
+.stack-header {
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px; user-select: none;
+}
+.stack-icon { font-size: 18px; width: 28px; text-align: center; }
+.stack-name { font-size: 13px; font-weight: 700; flex: 1; }
+.stack-players { font-size: 11px; opacity: .7; }
+.stack-actions { display: flex; gap: 4px; }
+.stack-expand {
+  font-size: 12px; line-height: 1.65; color: var(--muted);
+  padding: 0 16px 14px 56px; display: none;
+}
+.stack-layer.open .stack-expand { display: block; }
+.stack-expand strong { color: var(--white); }
+
+/* ── GALAXY PANEL ───────────────────────────────────────── */
+.galaxy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.g-card { border-radius: 10px; padding: 14px; font-size: 12.5px; line-height: 1.65; }
+.g-card h3 { font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+.g-adv { background: #0d2b1a; }
+.g-adv h3 { color: var(--green); }
+.g-risk { background: #2a0a0a; }
+.g-risk h3 { color: var(--red); }
+.g-roi { background: var(--card); grid-column: span 2; }
+.g-roi h3 { color: var(--blue); }
+
+.questions { margin-top: 16px; }
+.q-item {
+  padding: 10px 14px; border-left: 3px solid var(--amber);
+  background: var(--card); border-radius: 0 6px 6px 0;
+  font-size: 12.5px; margin-bottom: 8px; line-height: 1.55;
+}
+.q-label { font-weight: 700; font-size: 10px; color: var(--muted); margin-bottom: 3px; letter-spacing: 1px; }
+
+/* ── NOTES ──────────────────────────────────────────────── */
+.note-zone { display: none; padding: 10px 14px; background: var(--note-bg); border-top: 1px solid var(--note-border); }
+.note-zone.open { display: block; }
+.note-zone textarea {
+  width: 100%; min-height: 72px; padding: 8px 10px;
+  background: var(--card); border: 1px solid var(--note-border);
+  border-radius: 5px; color: var(--white); font-size: 12px;
+  font-family: inherit; resize: vertical; outline: none; line-height: 1.55;
+}
+.note-zone textarea:focus { border-color: var(--amber); }
+.note-actions { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
+.note-save {
+  padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: 600;
+  border: none; background: var(--amber); color: #000; cursor: pointer;
+}
+.note-save:hover { background: #fbbf24; }
+.note-discard {
+  padding: 4px 10px; border-radius: 4px; font-size: 11px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); cursor: pointer;
+}
+.note-hint { font-size: 10px; color: var(--muted); margin-left: auto; }
+
+.note-display {
+  margin: 0 14px 10px; padding: 8px 12px;
+  background: var(--note-bg); border: 1px solid var(--note-border);
+  border-radius: 5px; font-size: 12px; color: #d4a; line-height: 1.55;
+  white-space: pre-wrap;
+}
+.note-display-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 4px;
+}
+.note-label { font-size: 10px; font-weight: 700; color: var(--note-border); letter-spacing: 1px; }
+.note-edit-btn { font-size: 10px; color: var(--muted); cursor: pointer; background: none; border: none; }
+.note-edit-btn:hover { color: var(--amber); }
+
+/* ── SEARCH HIGHLIGHT BAR ───────────────────────────────── */
+.search-bar-info {
+  padding: 8px 16px; background: rgba(253,224,71,0.08);
+  border-bottom: 1px solid rgba(253,224,71,0.2);
+  font-size: 12px; color: var(--muted); display: none;
+}
+.search-bar-info.visible { display: block; }
+
+/* ── RESPONSIVE ─────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .criteria-grid, .map-cards, .galaxy-grid { grid-template-columns: 1fr; }
+  .iso-cards { grid-template-columns: 1fr 1fr; }
+  .g-roi { grid-column: span 1; }
+  .queue-stages { flex-direction: column; }
+  .queue-stage:not(:last-child)::after { content: '↓'; right: auto; top: auto; position: static; }
+}
+
+/* ── SCROLLBAR ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <span class="topbar-title">⚡ AI Infra Roadmap</span>
+  <div class="search-wrap">
+    <input type="text" id="searchInput" placeholder="Search steps, concepts…" oninput="handleSearch(this.value)">
+    <span class="search-clear" id="searchClear" onclick="clearSearch()">×</span>
+  </div>
+  <span class="search-count" id="searchCount"></span>
+  <button class="topbar-btn" id="highlightsBtn" onclick="toggleHighlightMode()">⭐ Highlights</button>
+  <button class="topbar-btn" onclick="clearAllHighlights()">Clear ⭐</button>
+  <button class="topbar-btn" onclick="exportNotes()">📋 Export Notes</button>
+</div>
+
+<div class="search-bar-info" id="searchInfo"></div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- THESIS -->
+  <div class="thesis">
+    <strong>核心论点：</strong>AI的瓶颈已经不是模型创新本身，而是
+    <strong>电力可用性、算力部署能力和通电速度（time-to-power）</strong>。<br>
+    谁掌握了 approved power + 成熟的基础设施，谁就掌握了AI供应链的关键节点。
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('roadmap',this)">🏗️ 开发 Roadmap</button>
+    <button class="tab" onclick="switchTab('stack',this)">⚙️ AI 技术栈</button>
+    <button class="tab" onclick="switchTab('galaxy',this)">🌌 Galaxy 论点</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       PANEL 1 · ROADMAP
+  ═══════════════════════════════════════════════════════ -->
+  <div class="panel active" id="panel-roadmap">
+
+    <!-- PHASE 1 -->
+    <div class="phase-group">
+      <div class="phase-label" style="color:var(--green)">Phase 1 · Site Selection</div>
+
+      <!-- STEP 1 -->
+      <div class="step-card" id="card-step1" data-search-text="choose state ercot texas miso pjm power market deregulated wind solar">
+        <div class="step-header" onclick="toggleStep('step1')">
+          <div class="step-num" style="background:var(--green)">1</div>
+          <div class="step-info">
+            <div class="step-title">Choose Your State</div>
+            <div class="step-sub">ERCOT · MISO · PJM · Southeast utilities</div>
+          </div>
+          <div class="step-actions">
+            <button class="action-btn" title="Highlight" onclick="toggleHighlight(event,'step1')">⭐</button>
+            <button class="action-btn" title="Add note" onclick="toggleNote(event,'step1')">✏️</button>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="step-body" id="body-step1">
+          <p class="detail-text">
+            这是整个项目的第一个决策，影响之后所有变量——电力成本、permitting速度、税收、土地可用性。
+          </p>
+          <div class="criteria-grid">
+            <div class="criteria-card" style="border-color:var(--amber)">
+              <div class="crit-title" style="color:var(--amber)">⚡ Power Market Structure</div>
+              <div class="crit-body">去管制化（deregulated）市场 = faster time-to-power。ERCOT（Texas）是最快的；PJM/MISO排队更长。</div>
+            </div>
+            <div class="criteria-card" style="border-color:var(--green)">
+              <div class="crit-title" style="color:var(--green)">🌬 Renewable Abundance</div>
+              <div class="crit-body">West Texas风能/太阳能充裕，stranded energy（孤立的可再生电）可以用来压低长期电价。</div>
+            </div>
+            <div class="criteria-card" style="border-color:var(--blue)">
+              <div class="crit-title" style="color:var(--blue)">🗺 Land &amp; Scale</div>
+              <div class="crit-body">需要大片土地支持multi-GW campus扩展，东西海岸土地稀缺且成本高。</div>
+            </div>
+            <div class="criteria-card" style="border-color:var(--purple)">
+              <div class="crit-title" style="color:var(--purple)">📋 Regulatory Speed</div>
+              <div class="crit-body">Texas、Wyoming、Nevada permitting通常比Massachusetts、California快数年。</div>
+            </div>
+          </div>
+          <div class="tag-row">
+            <span class="tag" style="color:var(--green);border-color:var(--green);background:rgba(34,197,94,0.1)">✓ ERCOT / West Texas — 推荐</span>
+            <span class="tag" style="color:var(--muted);border-color:var(--border)">MISO (Midwest)</span>
+            <span class="tag" style="color:var(--muted);border-color:var(--border)">PJM (Mid-Atlantic)</span>
+            <span class="tag" style="color:var(--muted);border-color:var(--border)">Southeast utilities</span>
+          </div>
+        </div>
+        <div class="note-display" id="note-display-step1" style="display:none"></div>
+        <div class="note-zone" id="note-step1">
+          <textarea id="note-input-step1" placeholder="Add your notes here…"></textarea>
+          <div class="note-actions">
+            <button class="note-save" onclick="saveNote('step1')">Save</button>
+            <button class="note-discard" onclick="toggleNote(null,'step1')">Cancel</button>
+            <span class="note-hint">Notes saved in this session</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2 — EXPANDED WITH MAP RESOURCES -->
+      <div class="step-card" id="card-step2" data-search-text="find land substation transmission lines fiber permitting power site screening infrastructure map hifld eia ercot">
+        <div class="step-header" onclick="toggleStep('step2')">
+          <div class="step-num" style="background:var(--green)">2</div>
+          <div class="step-info">
+            <div class="step-title">Find Your Land</div>
+            <div class="step-sub">Power · Land · Fiber · Permitting · Infrastructure Maps</div>
+          </div>
+          <div class="step-actions">
+            <button class="action-btn" title="Highlight" onclick="toggleHighlight(event,'step2')">⭐</button>
+            <button class="action-btn" title="Add note" onclick="toggleNote(event,'step2')">✏️</button>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="step-body" id="body-step2">
+          <p class="detail-text">
+            四大核心筛选维度同时评估。每一条都是硬性门槛——不达标的地块直接排除。
+          </p>
+          <div class="criteria-grid">
+            <div class="criteria-card" style="border-color:var(--amber)">
+              <div class="crit-title" style="color:var(--amber)">⚡ Power</div>
+              <div class="crit-body">
+                <strong>Transmission lines：</strong>离345kV+高压线越近越好，每多1英里输电成本上升显著。<br>
+                <strong>Substation：</strong>附近有没有可用substation？有没有变压器容量余量？需要向utility查询。<br>
+                <strong>Redundancy：</strong>是否有双路供电保障？故障时是否有备用路由？
+              </div>
+            </div>
+            <div class="criteria-card" style="border-color:var(--green)">
+              <div class="crit-title" style="color:var(--green)">🗺 Land</div>
+              <div class="crit-body">
+                <strong>面积：</strong>至少预留200–500亩用于首期，且需要扩展空间至multi-GW。<br>
+                <strong>地形：</strong>平坦为佳，远离洪泛区（FEMA Flood Zone A/AE）。<br>
+                <strong>地震：</strong>核查USGS seismic hazard map，West Texas属低风险区。
+              </div>
+            </div>
+            <div class="criteria-card" style="border-color:var(--blue)">
+              <div class="crit-title" style="color:var(--blue)">🌐 Fiber Infrastructure</div>
+              <div class="crit-body">
+                <strong>Long-haul fiber：</strong>附近是否有AT&amp;T、Lumen、Zayo等carrier的fiber route。<br>
+                <strong>Carrier presence：</strong>多家carrier竞争→降低带宽成本。<br>
+                <strong>用途：</strong>inference networking、distributed training、cloud connectivity。
+              </div>
+            </div>
+            <div class="criteria-card" style="border-color:var(--purple)">
+              <div class="crit-title" style="color:var(--purple)">📋 Permitting Timeline</div>
+              <div class="crit-body">
+                <strong>Zoning：</strong>当前土地用途是否允许工业/数据中心？<br>
+                <strong>Environmental：</strong>环境影响评估（EIA）是否触发NEPA审查？<br>
+                <strong>Water：</strong>水冷需要水权（water rights），West Texas水资源有限需提前规划。<br>
+                <strong>Utility approval：</strong>grid接入正式审批。
+              </div>
+            </div>
+          </div>
+
+          <!-- SITE SCREENING WORKFLOW -->
+          <div class="map-section">
+            <div class="map-section-title">🗺 Infrastructure Screening Workflow</div>
+            <div class="screening-guide">
+              <h4>如何用地图筛选datacenter候选地块（Step-by-step）</h4>
+              <div class="screening-step">
+                <div class="screening-num">1</div>
+                <div class="screening-text">
+                  <strong>Region-level screening（EIA Energy Atlas）</strong><br>
+                  先在宏观层面找 transmission corridor 密集区域。打开EIA Atlas，开启"Electric Power Transmission Lines"图层，筛选345kV及以上高压线。高压线密集区域 = 电力供应稳定、interconnection成本低。
+                </div>
+              </div>
+              <div class="screening-step">
+                <div class="screening-num">2</div>
+                <div class="screening-text">
+                  <strong>Substation定位（HIFLD Substations Map）</strong><br>
+                  在目标区域内找具体substation。用HIFLD地图筛选：Max Voltage ≥ 345kV，State = TX（或你的目标州）。找到候选substation后，记下名称和坐标，作为选址的锚点。
+                </div>
+              </div>
+              <div class="screening-step">
+                <div class="screening-num">3</div>
+                <div class="screening-text">
+                  <strong>Land可用性交叉验证</strong><br>
+                  以候选substation为圆心，在半径5–10英里范围内寻找可用土地。工具：Google Maps（卫星图看地形）、County GIS portals（看地块ownership）、FEMA Flood Map（排除洪泛区）。
+                </div>
+              </div>
+              <div class="screening-step">
+                <div class="screening-num">4</div>
+                <div class="screening-text">
+                  <strong>Utility Capacity查询</strong><br>
+                  联系当地utility（ERCOT territory内直接联系transmission owner，如Oncor、AEP）查询substation是否有available headroom。这一步需要正式沟通，但前三步可独立完成。
+                </div>
+              </div>
+              <div class="screening-step">
+                <div class="screening-num">5</div>
+                <div class="screening-text">
+                  <strong>Fiber Route确认</strong><br>
+                  用TeleGeography或直接联系AT&amp;T、Lumen、Zayo查当地fiber route分布。也可以看county道路沿线——major carrier通常沿高速公路敷设fiber。
+                </div>
+              </div>
+            </div>
+
+            <!-- MAP RESOURCE CARDS -->
+            <div class="map-section-title" style="margin-top:14px">🔗 Infrastructure Map Resources</div>
+            <div class="map-cards">
+              <div class="map-card" onclick="window.open('https://atlas.eia.gov','_blank')">
+                <div class="map-card-header">
+                  <div class="map-card-name">EIA Energy Atlas</div>
+                  <div class="map-card-badge">FREE · US-wide</div>
+                </div>
+                <div class="map-card-desc">美国能源信息署的交互式地图，最佳宏观筛选工具。可叠加多个图层同时查看电力基础设施分布。</div>
+                <div class="map-card-shows">显示：<span>输电线路 · 发电厂 · 变电站 · 可再生资源</span></div>
+                <a class="map-card-link" href="https://atlas.eia.gov" target="_blank" onclick="event.stopPropagation()">→ atlas.eia.gov ↗</a>
+              </div>
+
+              <div class="map-card" onclick="window.open('https://hifld-geoplatform.hub.arcgis.com/datasets/geoplatform::electric-substations/explore','_blank')">
+                <div class="map-card-header">
+                  <div class="map-card-name">HIFLD Electric Substations</div>
+                  <div class="map-card-badge">FREE · 政府开放数据</div>
+                </div>
+                <div class="map-card-desc">全美所有变电站的位置、电压等级、所有者。可按电压（345kV+）和州过滤，精确定位候选substation。</div>
+                <div class="map-card-shows">显示：<span>变电站位置 · Max/Min Voltage · Owner · State</span></div>
+                <a class="map-card-link" href="https://hifld-geoplatform.hub.arcgis.com/datasets/geoplatform::electric-substations/explore" target="_blank" onclick="event.stopPropagation()">→ HIFLD Substations ↗</a>
+              </div>
+
+              <div class="map-card" onclick="window.open('https://hifld-geoplatform.hub.arcgis.com/datasets/geoplatform::electric-power-transmission-lines/explore','_blank')">
+                <div class="map-card-header">
+                  <div class="map-card-name">HIFLD Transmission Lines</div>
+                  <div class="map-card-badge">FREE · 政府开放数据</div>
+                </div>
+                <div class="map-card-desc">全美高压输电线路的地理分布。过滤Voltage ≥ 345kV找主要输电走廊，定位高电力可靠性区域。</div>
+                <div class="map-card-shows">显示：<span>输电线电压 · 走廊路由 · Owner · 线路类型</span></div>
+                <a class="map-card-link" href="https://hifld-geoplatform.hub.arcgis.com/datasets/geoplatform::electric-power-transmission-lines/explore" target="_blank" onclick="event.stopPropagation()">→ HIFLD Transmission ↗</a>
+              </div>
+
+              <div class="map-card" onclick="window.open('https://www.ercot.com/gridmktinfo/transmission','_blank')">
+                <div class="map-card-header">
+                  <div class="map-card-name">ERCOT Transmission Maps</div>
+                  <div class="map-card-badge">FREE · Texas专属</div>
+                </div>
+                <div class="map-card-desc">ERCOT官方输电规划地图，最适合West Texas/Texas选址。可查看拥塞区域、计划中的新线路和substation扩容项目。</div>
+                <div class="map-card-shows">显示：<span>Texas grid · 拥塞节点 · 规划扩容项目</span></div>
+                <a class="map-card-link" href="https://www.ercot.com/gridmktinfo/transmission" target="_blank" onclick="event.stopPropagation()">→ ERCOT Grid Info ↗</a>
+              </div>
+
+              <div class="map-card" onclick="window.open('https://globalenergymonitor.org/projects/global-transmission-line-tracker/tracker-map/','_blank')">
+                <div class="map-card-header">
+                  <div class="map-card-name">Global Energy Monitor</div>
+                  <div class="map-card-badge">FREE · 全球</div>
+                </div>
+                <div class="map-card-desc">全球输电线路追踪器，包含规划中和在建项目。适合做multi-country选址比较，或了解竞争对手的基础设施布局。</div>
+                <div class="map-card-shows">显示：<span>全球输电线 · 在建 / 规划项目 · 国家对比</span></div>
+                <a class="map-card-link" href="https://globalenergymonitor.org/projects/global-transmission-line-tracker/tracker-map/" target="_blank" onclick="event.stopPropagation()">→ Global Transmission ↗</a>
+              </div>
+
+              <div class="map-card" onclick="window.open('https://msc.fema.gov/portal/home','_blank')">
+                <div class="map-card-header">
+                  <div class="map-card-name">FEMA Flood Map Service</div>
+                  <div class="map-card-badge">FREE · 风险筛查</div>
+                </div>
+                <div class="map-card-desc">在确定候选地块后必查。Flood Zone A/AE = 高洪水风险，应排除。West Texas多数区域属Zone X（低风险）。</div>
+                <div class="map-card-shows">显示：<span>洪水风险区 · Zone A/AE/X · 保险要求</span></div>
+                <a class="map-card-link" href="https://msc.fema.gov/portal/home" target="_blank" onclick="event.stopPropagation()">→ FEMA Flood Map ↗</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="note-display" id="note-display-step2" style="display:none"></div>
+        <div class="note-zone" id="note-step2">
+          <textarea id="note-input-step2" placeholder="Add your notes here…"></textarea>
+          <div class="note-actions">
+            <button class="note-save" onclick="saveNote('step2')">Save</button>
+            <button class="note-discard" onclick="toggleNote(null,'step2')">Cancel</button>
+            <span class="note-hint">Notes saved in this session</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHASE 2 -->
+    <div class="phase-group">
+      <div class="phase-label" style="color:var(--amber)">Phase 2 · Power Infrastructure</div>
+
+      <!-- STEP 3 — EXPANDED INTERCONNECTION DETAIL -->
+      <div class="step-card" id="card-step3" data-search-text="power study interconnection queue ercot miso pjm generator utility transmission capacity grid stability substation 3 7 years approved capacity bottleneck">
+        <div class="step-header" onclick="toggleStep('step3')">
+          <div class="step-num" style="background:var(--amber)">3</div>
+          <div class="step-info">
+            <div class="step-title">Power Study / Interconnection <span style="font-size:10px;background:rgba(248,113,113,0.15);color:var(--red);padding:2px 7px;border-radius:8px;font-weight:600;margin-left:6px">⚠ 最大瓶颈</span></div>
+            <div class="step-sub">排队 3–7 年 · Approved power = 核心资产</div>
+          </div>
+          <div class="step-actions">
+            <button class="action-btn" title="Highlight" onclick="toggleHighlight(event,'step3')">⭐</button>
+            <button class="action-btn" title="Add note" onclick="toggleNote(event,'step3')">✏️</button>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="step-body" id="body-step3">
+          <p class="detail-text">
+            ERCOT / utility 会开始研究 transmission capacity 够吗，grid stability 会受影响吗，是否需要新 substation，是否需要升级 transmission lines。<br><br>
+            <strong>关键洞察：</strong>谁有 approved power & interconnection，谁就值钱。Galaxy 已有 ERCOT approved capacity + substation & transmission access，这是真正的护城河——新进入者今天入场最快也要等 3–7 年。
+          </p>
+
+          <!-- INTERCONNECTION QUEUE STAGES -->
+          <div class="queue-viz">
+            <h4>Interconnection Queue：你的申请在哪一步？</h4>
+            <div class="queue-stages">
+              <div class="queue-stage">
+                <div class="q-dot" style="background:rgba(59,130,246,0.2);color:var(--blue)">1</div>
+                <div class="q-name">Application</div>
+                <div class="q-time">提交申请</div>
+              </div>
+              <div class="queue-stage">
+                <div class="q-dot" style="background:rgba(59,130,246,0.2);color:var(--blue)">2</div>
+                <div class="q-name">Feasibility Study</div>
+                <div class="q-time">~6–12 mo</div>
+              </div>
+              <div class="queue-stage">
+                <div class="q-dot" style="background:rgba(245,158,11,0.2);color:var(--amber)">3</div>
+                <div class="q-name">System Impact Study</div>
+                <div class="q-time">~12–24 mo</div>
+              </div>
+              <div class="queue-stage">
+                <div class="q-dot" style="background:rgba(245,158,11,0.2);color:var(--amber)">4</div>
+                <div class="q-name">Facilities Study</div>
+                <div class="q-time">~12–18 mo</div>
+              </div>
+              <div class="queue-stage">
+                <div class="q-dot" style="background:rgba(248,113,113,0.2);color:var(--red)">5</div>
+                <div class="q-name">IA Negotiation</div>
+                <div class="q-time">~6–12 mo</div>
+              </div>
+              <div class="queue-stage">
+                <div class="q-dot" style="background:rgba(34,197,94,0.2);color:var(--green)">✓</div>
+                <div class="q-name">Commercial Op</div>
+                <div class="q-time">Total: 3–7 yr</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ISO COMPARISON -->
+          <div class="iso-cards">
+            <div class="iso-card" style="border-color:var(--green)">
+              <div class="iso-name" style="color:var(--green)">ERCOT</div>
+              <div class="iso-region">West Texas · Deregulated</div>
+              <div class="iso-stat">最快路径。市场去管制化，capacity queue较短。Galaxy在此已有approved power。</div>
+            </div>
+            <div class="iso-card" style="border-color:var(--amber)">
+              <div class="iso-name" style="color:var(--amber)">MISO</div>
+              <div class="iso-region">Midwest · Regulated</div>
+              <div class="iso-stat">中西部农业地区，风能丰富。Queue backlog严重，2022年改革后略有改善。</div>
+            </div>
+            <div class="iso-card" style="border-color:var(--blue)">
+              <div class="iso-name" style="color:var(--blue)">PJM</div>
+              <div class="iso-region">Mid-Atlantic · Regulated</div>
+              <div class="iso-stat">覆盖DC、VA、PA等数据中心密集区。Queue最长，通常需要5年以上。</div>
+            </div>
+          </div>
+
+          <div class="tag-row">
+            <span class="tag" style="color:var(--red);border-color:var(--red);background:rgba(248,113,113,0.1)">⚠ Withdraw rate 80%+：大量项目在队列中退出</span>
+            <span class="tag" style="color:var(--amber);border-color:var(--amber);background:rgba(245,158,11,0.1)">Galaxy已越过此关卡</span>
+          </div>
+        </div>
+        <div class="note-display" id="note-display-step3" style="display:none"></div>
+        <div class="note-zone" id="note-step3">
+          <textarea id="note-input-step3" placeholder="Add your notes here…"></textarea>
+          <div class="note-actions">
+            <button class="note-save" onclick="saveNote('step3')">Save</button>
+            <button class="note-discard" onclick="toggleNote(null,'step3')">Cancel</button>
+            <span class="note-hint">Notes saved in this session</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="step-card" id="card-step4" data-search-text="permitting zoning environmental water construction utility approval permits timeline">
+        <div class="step-header" onclick="toggleStep('step4')">
+          <div class="step-num" style="background:var(--amber)">4</div>
+          <div class="step-info">
+            <div class="step-title">Permitting</div>
+            <div class="step-sub">Zoning · Environmental · Water · Construction · Utility</div>
+          </div>
+          <div class="step-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'step4')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'step4')">✏️</button>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="step-body" id="body-step4">
+          <p class="detail-text">五类许可证并行推进，每一类都有独立的审批机构和时间线。ERCOT区域比东北/加州显著快。</p>
+          <div class="criteria-grid">
+            <div class="criteria-card" style="border-color:var(--amber)">
+              <div class="crit-title" style="color:var(--amber)">🏙 Zoning</div>
+              <div class="crit-body">土地用途是否允许数据中心？如需rezoning，县政府公听会流程可能需要6–18个月。</div>
+            </div>
+            <div class="criteria-card" style="border-color:var(--green)">
+              <div class="crit-title" style="color:var(--green)">🌿 Environmental</div>
+              <div class="crit-body">影响范围大则触发NEPA审查（联邦级），可能需要Environmental Impact Statement（EIS），耗时2–3年。</div>
+            </div>
+            <div class="criteria-card" style="border-color:var(--blue)">
+              <div class="crit-title" style="color:var(--blue)">💧 Water Permits</div>
+              <div class="crit-body">水冷系统用水量巨大，需要水权（water rights）。West Texas水资源紧张，需提前规划或考虑风冷方案。</div>
+            </div>
+            <div class="criteria-card" style="border-color:var(--purple)">
+              <div class="crit-title" style="color:var(--purple)">🏗 Construction + Utility</div>
+              <div class="crit-body">建设许可证、消防安全审查、以及utility正式接入审批（grid connection agreement）。</div>
+            </div>
+          </div>
+        </div>
+        <div class="note-display" id="note-display-step4" style="display:none"></div>
+        <div class="note-zone" id="note-step4">
+          <textarea id="note-input-step4" placeholder="Add your notes here…"></textarea>
+          <div class="note-actions">
+            <button class="note-save" onclick="saveNote('step4')">Save</button>
+            <button class="note-discard" onclick="toggleNote(null,'step4')">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHASE 3 -->
+    <div class="phase-group">
+      <div class="phase-label" style="color:var(--blue)">Phase 3 · Construction</div>
+
+      <!-- STEPS 5-8 -->
+      <div class="step-card" id="card-step5" data-search-text="design engineering power distribution cooling generators UPS networking battery backup transformers infrastructure">
+        <div class="step-header" onclick="toggleStep('step5')">
+          <div class="step-num" style="background:var(--blue)">5</div>
+          <div class="step-info">
+            <div class="step-title">Design &amp; Engineering</div>
+            <div class="step-sub">Power distribution · Cooling · UPS · Networking</div>
+          </div>
+          <div class="step-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'step5')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'step5')">✏️</button>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="step-body" id="body-step5">
+          <p class="detail-text">
+            Infrastructure包括：power distribution（transformers, switchgear, PDUs）、backup generators、cooling systems（水冷/液冷/风冷）、networking（fiber runs, optical switches）、battery backup、UPS systems。<br><br>
+            <strong>UPS工作原理：</strong>Grid fails → UPS instant backup（毫秒级）→ Generators启动（30–60秒）→ 系统恢复正常供电。<br><br>
+            <strong>GPU升级带来的挑战：</strong>每一代GPU功耗更高（H100→B100→B200持续上升），导致cooling和power infrastructure需要预留升级弹性——liquid cooling越来越成为标配。
+          </p>
+        </div>
+        <div class="note-display" id="note-display-step5" style="display:none"></div>
+        <div class="note-zone" id="note-step5">
+          <textarea id="note-input-step5" placeholder="Add your notes here…"></textarea>
+          <div class="note-actions">
+            <button class="note-save" onclick="saveNote('step5')">Save</button>
+            <button class="note-discard" onclick="toggleNote(null,'step5')">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-card" id="card-step6" data-search-text="pre-leasing customer acquisition LOI PPA DSA committed MW revenue coreweave hyperscale colocation">
+        <div class="step-header" onclick="toggleStep('step6')">
+          <div class="step-num" style="background:var(--blue)">6</div>
+          <div class="step-info">
+            <div class="step-title">Pre-leasing / Customer Acquisition</div>
+            <div class="step-sub">LOIs · PPAs · DSAs · Committed MW</div>
+          </div>
+          <div class="step-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'step6')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'step6')">✏️</button>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="step-body" id="body-step6">
+          <p class="detail-text">
+            在开工前锁定客户，是datacenter项目可融资的前提条件。<br><br>
+            <strong>Revenue = Committed MW × $/MW</strong> + 少量maintenance（facility ops, repairs, staffing, security）<br><br>
+            核心文件：<strong>LOI</strong>（意向书，早期承诺谈判）/ <strong>PPA</strong>（电力采购协议，锁定电价）/ <strong>DSA</strong>（数据中心服务协议，核心长期合同，是融资的anchor document）<br><br>
+            Sale-leaseback也是常见结构：hyperscale客户（如CoreWeave）购买土地并租回，改善开发商资本效率。
+          </p>
+        </div>
+        <div class="note-display" id="note-display-step6" style="display:none"></div>
+        <div class="note-zone" id="note-step6">
+          <textarea id="note-input-step6" placeholder="Add your notes here…"></textarea>
+          <div class="note-actions">
+            <button class="note-save" onclick="saveNote('step6')">Save</button>
+            <button class="note-discard" onclick="toggleNote(null,'step6')">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-card" id="card-step7" data-search-text="financing ROIC IRR yield on cost capex EBITDA equity debt project finance sale leaseback">
+        <div class="step-header" onclick="toggleStep('step7')">
+          <div class="step-num" style="background:var(--blue)">7</div>
+          <div class="step-info">
+            <div class="step-title">Financing</div>
+            <div class="step-sub">ROIC · Levered IRR · Yield on Cost</div>
+          </div>
+          <div class="step-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'step7')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'step7')">✏️</button>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="step-body" id="body-step7">
+          <p class="detail-text">
+            真正equity return要看的是 <strong>ROIC / Levered IRR</strong>。<br>
+            <strong>Stabilized Yield on Cost</strong> = 年化EBITDA ÷ 总开发Capex（建设阶段快速评估指标）。<br><br>
+            Hyperscale场景典型目标：Levered IRR 10–15%，Yield on Cost 8–12%。融资结构通常包含project finance债务 + equity注入 + 潜在的sale-leaseback安排。
+          </p>
+        </div>
+        <div class="note-display" id="note-display-step7" style="display:none"></div>
+        <div class="note-zone" id="note-step7">
+          <textarea id="note-input-step7" placeholder="Add your notes here…"></textarea>
+          <div class="note-actions">
+            <button class="note-save" onclick="saveNote('step7')">Save</button>
+            <button class="note-discard" onclick="toggleNote(null,'step7')">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-card" id="card-step8" data-search-text="construction transformer shortage supply chain utility delays technician shortage meta CBRE fiber training bottleneck">
+        <div class="step-header" onclick="toggleStep('step8')">
+          <div class="step-num" style="background:var(--blue)">8</div>
+          <div class="step-info">
+            <div class="step-title">Construction <span style="font-size:10px;background:rgba(248,113,113,0.15);color:var(--red);padding:2px 7px;border-radius:8px;font-weight:600;margin-left:6px">⚠ 供应链瓶颈</span></div>
+            <div class="step-sub">Transformer shortage · Utility delays · Technician gap</div>
+          </div>
+          <div class="step-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'step8')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'step8')">✏️</button>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="step-body" id="body-step8">
+          <p class="detail-text">三大瓶颈当前同时存在：</p>
+          <div class="criteria-grid">
+            <div class="criteria-card" style="border-color:var(--red)">
+              <div class="crit-title" style="color:var(--red)">🔌 Transformer Shortage</div>
+              <div class="crit-body">大型变压器交货期已达18–24个月+，全行业争抢有限产能。这一个零件就能把整个项目推迟1–2年。</div>
+            </div>
+            <div class="criteria-card" style="border-color:var(--red)">
+              <div class="crit-title" style="color:var(--red)">⚡ Utility Delays</div>
+              <div class="crit-body">即使interconnection获批，utility还要物理建设grid接入——substations、transmission升级。施工队伍全行业排队。</div>
+            </div>
+            <div class="criteria-card" style="border-color:var(--amber)">
+              <div class="crit-title" style="color:var(--amber)">👷 Technician Shortage</div>
+              <div class="crit-body">光纤施工、电气、液冷技术工人严重短缺。Meta和CBRE已开始自建fiber technician培训项目以保证建设速度。</div>
+            </div>
+            <div class="criteria-card" style="border-color:var(--blue)">
+              <div class="crit-title" style="color:var(--blue)">📦 Supply Chain</div>
+              <div class="crit-body">UPS系统、精密空调、液冷设备、发电机组的交期也在延长。需提前12–18个月下单锁货。</div>
+            </div>
+          </div>
+        </div>
+        <div class="note-display" id="note-display-step8" style="display:none"></div>
+        <div class="note-zone" id="note-step8">
+          <textarea id="note-input-step8" placeholder="Add your notes here…"></textarea>
+          <div class="note-actions">
+            <button class="note-save" onclick="saveNote('step8')">Save</button>
+            <button class="note-discard" onclick="toggleNote(null,'step8')">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHASE 4 -->
+    <div class="phase-group">
+      <div class="phase-label" style="color:var(--purple)">Phase 4 · Operations</div>
+
+      <div class="step-card" id="card-step9" data-search-text="energization power on grid connection live operational asset value refinancing revenue">
+        <div class="step-header" onclick="toggleStep('step9')">
+          <div class="step-num" style="background:var(--purple)">9</div>
+          <div class="step-info">
+            <div class="step-title">Power Energization</div>
+            <div class="step-sub">通电 · Grid connection live · Asset valuation shifts</div>
+          </div>
+          <div class="step-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'step9')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'step9')">✏️</button>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="step-body" id="body-step9">
+          <p class="detail-text">
+            正式完成grid接入，数据中心获得可用电力。这一时刻标志着资产从"在建"转为"可运营"，直接影响资产估值和融资条件：可以从建设期高成本债务切换到更低成本的permanent financing。<br><br>
+            Time-to-energization是整个商业模式中最关键的单一变量——每推迟一个月，都是直接的收入损失。
+          </p>
+        </div>
+        <div class="note-display" id="note-display-step9" style="display:none"></div>
+        <div class="note-zone" id="note-step9">
+          <textarea id="note-input-step9" placeholder="Add your notes here…"></textarea>
+          <div class="note-actions">
+            <button class="note-save" onclick="saveNote('step9')">Save</button>
+            <button class="note-discard" onclick="toggleNote(null,'step9')">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-card" id="card-step10" data-search-text="install IT equipment GPU HBM optical networking storage racks coreweave nvidia CoWoS TSMC lumentum maxlinear">
+        <div class="step-header" onclick="toggleStep('step10')">
+          <div class="step-num" style="background:var(--purple)">10</div>
+          <div class="step-info">
+            <div class="step-title">Install IT Equipment</div>
+            <div class="step-sub">GPUs · HBM · Optical Networking · Storage</div>
+          </div>
+          <div class="step-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'step10')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'step10')">✏️</button>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="step-body" id="body-step10">
+          <p class="detail-text">
+            客户（如CoreWeave）开始部署：NVIDIA GPUs（H100/B100/B200系列）、HBM（High Bandwidth Memory，防止GPU idle，由Micron/SK Hynix/Samsung提供）、光纤networking（GPU间通信依赖optical networking——铜线在大规模cluster下有bandwidth和heat generation限制）、storage（latency和bandwidth要求相对低）。<br><br>
+            <strong>TSMC CoWoS技术：</strong>把GPU die + HBM stack + interposer + substrate整合成一个超级package，实现GPU超高速读取HBM，low latency, high bandwidth。
+          </p>
+        </div>
+        <div class="note-display" id="note-display-step10" style="display:none"></div>
+        <div class="note-zone" id="note-step10">
+          <textarea id="note-input-step10" placeholder="Add your notes here…"></textarea>
+          <div class="note-actions">
+            <button class="note-save" onclick="saveNote('step10')">Save</button>
+            <button class="note-discard" onclick="toggleNote(null,'step10')">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-card" id="card-step11" data-search-text="commissioning testing handover power cooling networking security UPS generator failover revenue begins">
+        <div class="step-header" onclick="toggleStep('step11')">
+          <div class="step-num" style="background:var(--purple)">11</div>
+          <div class="step-info">
+            <div class="step-title">Commissioning ✓</div>
+            <div class="step-sub">Testing · Handover · Revenue begins</div>
+          </div>
+          <div class="step-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'step11')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'step11')">✏️</button>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="step-body" id="body-step11">
+          <p class="detail-text">
+            全面测试所有系统后正式移交客户。测试项目包括：power系统load test、冷却系统热性能验证、networking端到端测试、UPS和generator failover实际故障演练。<br><br>
+            Commissioning完成 = 资产进入Stabilized运营阶段，可计算最终Yield on Cost和实际IRR。这是investment thesis被验证的时刻。
+          </p>
+        </div>
+        <div class="note-display" id="note-display-step11" style="display:none"></div>
+        <div class="note-zone" id="note-step11">
+          <textarea id="note-input-step11" placeholder="Add your notes here…"></textarea>
+          <div class="note-actions">
+            <button class="note-save" onclick="saveNote('step11')">Save</button>
+            <button class="note-discard" onclick="toggleNote(null,'step11')">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /panel-roadmap -->
+
+  <!-- ═══════════════════════════════════════════════════════
+       PANEL 2 · AI STACK
+  ═══════════════════════════════════════════════════════ -->
+  <div class="panel" id="panel-stack">
+    <div class="stack">
+      <div class="stack-layer" id="card-l6" style="border-top:3px solid #fff" data-search-text="AI cloud applications coreweave aws azure gcp gpu rental inference training">
+        <div class="stack-header" onclick="toggleStack('l6')">
+          <div class="stack-icon">☁️</div>
+          <div class="stack-name" style="color:#fff">AI Applications &amp; Cloud</div>
+          <div class="stack-players">CoreWeave · AWS · Azure · GCP</div>
+          <div class="stack-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'l6')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'l6')">✏️</button>
+          </div>
+        </div>
+        <div class="stack-expand" id="body-l6">
+          <strong>CoreWeave</strong>是典型案例：GPU rental provider，提供GPU access + networking + orchestration + AI infra，按用量计费。GPU-first架构，针对AI training & inference优化了低延迟networking和高带宽GPU clusters。CoreWeave的存在正是为什么Galaxy的物理基础设施如此关键。
+        </div>
+        <div class="note-display" id="note-display-l6" style="display:none"></div>
+        <div class="note-zone" id="note-l6"><textarea id="note-input-l6" placeholder="Add notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('l6')">Save</button><button class="note-discard" onclick="toggleNote(null,'l6')">Cancel</button></div></div>
+      </div>
+
+      <div class="stack-layer" id="card-l5" style="border-top:3px solid var(--green)" data-search-text="optical networking lumentum maxlinear GPU communication fiber transceivers lasers copper bandwidth">
+        <div class="stack-header" onclick="toggleStack('l5')">
+          <div class="stack-icon">🌐</div>
+          <div class="stack-name" style="color:var(--green)">Optical Networking</div>
+          <div class="stack-players">Lumentum · MaxLinear</div>
+          <div class="stack-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'l5')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'l5')">✏️</button>
+          </div>
+        </div>
+        <div class="stack-expand" id="body-l5">
+          GPU之间数据传输依赖光纤 + optical networking。铜线在短距离表现尚可，但随AI clusters规模扩大，铜线面临bandwidth限制、信号衰减、散热和能耗问题。<br><br>
+          <strong>Lumentum：</strong>optical transceivers, lasers, photonics components<br>
+          <strong>MaxLinear：</strong>networking chips<br><br>
+          光传输用光而非电信号，实现更高带宽、更低延迟、更远距离、更低能耗。
+        </div>
+        <div class="note-display" id="note-display-l5" style="display:none"></div>
+        <div class="note-zone" id="note-l5"><textarea id="note-input-l5" placeholder="Add notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('l5')">Save</button><button class="note-discard" onclick="toggleNote(null,'l5')">Cancel</button></div></div>
+      </div>
+
+      <div class="stack-layer" id="card-l4" style="border-top:3px solid var(--purple)" data-search-text="GPU NVIDIA H100 B100 B200 compute training inference power cooling">
+        <div class="stack-header" onclick="toggleStack('l4')">
+          <div class="stack-icon">🖥️</div>
+          <div class="stack-name" style="color:var(--purple)">GPU Compute</div>
+          <div class="stack-players">NVIDIA H100 / B100 / B200</div>
+          <div class="stack-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'l4')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'l4')">✏️</button>
+          </div>
+        </div>
+        <div class="stack-expand" id="body-l4">
+          GPU是AI训练和推理的核心算力单元。每一代GPU升级都带来更高功耗、更高散热需求（推动液冷升级）以及更高的HBM需求。<br><br>
+          GPU快速迭代意味着数据中心基础设施必须预留升级弹性——modular cooling、可扩展power capacity是设计时的关键考量。
+        </div>
+        <div class="note-display" id="note-display-l4" style="display:none"></div>
+        <div class="note-zone" id="note-l4"><textarea id="note-input-l4" placeholder="Add notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('l4')">Save</button><button class="note-discard" onclick="toggleNote(null,'l4')">Cancel</button></div></div>
+      </div>
+
+      <div class="stack-layer" id="card-l3" style="border-top:3px solid var(--blue)" data-search-text="CoWoS chip on wafer substrate TSMC packaging GPU HBM interposer bandwidth latency advanced packaging">
+        <div class="stack-header" onclick="toggleStack('l3')">
+          <div class="stack-icon">📦</div>
+          <div class="stack-name" style="color:var(--blue)">Advanced Packaging (CoWoS)</div>
+          <div class="stack-players">TSMC — GPU + HBM Integration</div>
+          <div class="stack-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'l3')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'l3')">✏️</button>
+          </div>
+        </div>
+        <div class="stack-expand" id="body-l3">
+          <strong>TSMC CoWoS（Chip-on-Wafer-on-Substrate）：</strong>把GPU die + HBM stack + interposer（超密集wiring，高bandwidth传输通道）+ substrate整合成一个超级package。<br><br>
+          效果：GPU可以超高速读取HBM，实现极低延迟和极高带宽——AI训练/推理的性能核心。CoWoS产能是AI算力的上游瓶颈之一。
+        </div>
+        <div class="note-display" id="note-display-l3" style="display:none"></div>
+        <div class="note-zone" id="note-l3"><textarea id="note-input-l3" placeholder="Add notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('l3')">Save</button><button class="note-discard" onclick="toggleNote(null,'l3')">Cancel</button></div></div>
+      </div>
+
+      <div class="stack-layer" id="card-l2" style="border-top:3px solid var(--blue)" data-search-text="HBM high bandwidth memory micron SK hynix samsung GPU idle volatile short term storage">
+        <div class="stack-header" onclick="toggleStack('l2')">
+          <div class="stack-icon">💾</div>
+          <div class="stack-name" style="color:var(--blue)">HBM Memory</div>
+          <div class="stack-players">Micron · SK Hynix · Samsung</div>
+          <div class="stack-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'l2')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'l2')">✏️</button>
+          </div>
+        </div>
+        <div class="stack-expand" id="body-l2">
+          <strong>HBM（High Bandwidth Memory）：</strong>防止GPU idle的关键。相当于GPU的volatile短期内存，提供极高带宽。Storage（长期存储）对latency和bandwidth要求低得多，不是AI性能核心瓶颈。<br><br>
+          SK Hynix目前处于HBM市场领先地位，Micron正积极追赶。HBM产能是AI供应链的另一个上游制约因素。
+        </div>
+        <div class="note-display" id="note-display-l2" style="display:none"></div>
+        <div class="note-zone" id="note-l2"><textarea id="note-input-l2" placeholder="Add notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('l2')">Save</button><button class="note-discard" onclick="toggleNote(null,'l2')">Cancel</button></div></div>
+      </div>
+
+      <div class="stack-layer" id="card-l1" style="border-top:3px solid var(--amber)" data-search-text="physical infrastructure power land cooling datacenter galaxy helios ERCOT west texas foundation">
+        <div class="stack-header" onclick="toggleStack('l1')">
+          <div class="stack-icon">⚡</div>
+          <div class="stack-name" style="color:var(--amber)">Physical Infrastructure</div>
+          <div class="stack-players">Galaxy Helios · Power · Land · Cooling</div>
+          <div class="stack-actions">
+            <button class="action-btn" onclick="toggleHighlight(event,'l1')">⭐</button>
+            <button class="action-btn" onclick="toggleNote(event,'l1')">✏️</button>
+          </div>
+        </div>
+        <div class="stack-expand" id="body-l1">
+          整个AI stack的最底层：<strong>电力、冷却、土地、网络连接</strong>。这是当前最稀缺的资源——比GPU更难快速复制。<br><br>
+          Approved power capacity + grid interconnection是需要3–7年才能获得的资产，Galaxy已拿到这张"入场券"。这是整条价值链中最不可替代的一层。
+        </div>
+        <div class="note-display" id="note-display-l1" style="display:none"></div>
+        <div class="note-zone" id="note-l1"><textarea id="note-input-l1" placeholder="Add notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('l1')">Save</button><button class="note-discard" onclick="toggleNote(null,'l1')">Cancel</button></div></div>
+      </div>
+    </div>
+  </div><!-- /panel-stack -->
+
+  <!-- ═══════════════════════════════════════════════════════
+       PANEL 3 · GALAXY
+  ═══════════════════════════════════════════════════════ -->
+  <div class="panel" id="panel-galaxy">
+    <div class="galaxy-grid">
+      <div class="g-card g-adv">
+        <h3>✅ Galaxy的优势</h3>
+        · 已有ERCOT approved power capacity<br>
+        · Substation &amp; transmission access已就位<br>
+        · 比特币矿场→数据中心：先发优势显著<br>
+        · West Texas大规模可扩展（multi-GW campus）<br>
+        · 风能/太阳能丰富，stranded energy可利用<br>
+        · 电力市场去管制化，time-to-power快<br>
+        · 数字资产DNA适配重资产/高电耗运营模式
+      </div>
+      <div class="g-card g-risk">
+        <h3>⚠️ 主要风险</h3>
+        · Power delivery delays（行业共性）<br>
+        · <strong>客户集中风险</strong>：CoreWeave依赖度高<br>
+        · Execution complexity at multi-GW scale<br>
+        · Transformer &amp; 供应链瓶颈<br>
+        · AI基础设施市场竞争者快速增加<br>
+        · CoreWeave自身的客户集中和财务风险
+      </div>
+      <div class="g-card g-roi">
+        <h3>📊 ROI框架</h3>
+        <strong>Revenue</strong> = Committed MW × $/MW + Maintenance（facility ops, repairs, staffing, security）<br><br>
+        <strong>真正equity return要看：</strong>
+        ROIC / Levered IRR · Stabilized Yield on Cost（= 年化EBITDA ÷ 总开发Capex）<br><br>
+        <strong>典型目标范围：</strong>Levered IRR 10–15%，Yield on Cost 8–12%
+      </div>
+    </div>
+
+    <div class="questions">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:10px;letter-spacing:1.5px">深度问题 · Key Questions</div>
+      <div class="q-item"><div class="q-label">Q1 · 战略</div>Galaxy如何在speed-to-market与长期infrastructure optimization之间取得平衡？在multi-GW campus的规模下，这两者的张力如何体现？</div>
+      <div class="q-item"><div class="q-label">Q2 · 竞争护城河</div>相对于越来越多的AI基础设施进入者，Helios的差异化究竟有多强？approved power之外还有什么moat？</div>
+      <div class="q-item"><div class="q-label">Q3 · 客户多元化</div>团队如何考虑随时间推进、超越CoreWeave的客户多元化？pipeline里还有哪些类型的潜在客户？</div>
+      <div class="q-item"><div class="q-label">Q4 · 规模化能力</div>将Galaxy扩展为真正的multi-campus AI基础设施平台，哪些能力是最critical的？执行层面最大的风险是什么？</div>
+      <div class="q-item"><div class="q-label">Q5 · 想学的内容</div>Power markets和grid interconnection processes（ERCOT, MISO, PJM）/ Hyperscale/colocation leasing结构（sale-leaseback）/ 如何解读LOIs, PPAs, DSAs, development agreements, due diligence reports？</div>
+    </div>
+  </div><!-- /panel-galaxy -->
+
+</div><!-- /main -->
+
+<script>
+// ── STATE ────────────────────────────────────────────────────
+const state = {
+  openSteps:   new Set(),
+  openStacks:  new Set(),
+  highlights:  new Set(),
+  notes:       {},
+  openNotes:   new Set(),
+  searchQuery: '',
+  highlightMode: false,
+};
+
+// ── TABS ─────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (state.searchQuery) applySearch(state.searchQuery);
+}
+
+// ── STEPS ────────────────────────────────────────────────────
+function toggleStep(id) {
+  const card = document.getElementById('card-' + id);
+  const body = document.getElementById('body-' + id);
+  if (!card || !body) return;
+  const isOpen = state.openSteps.has(id);
+  if (isOpen) { state.openSteps.delete(id); card.classList.remove('open'); }
+  else         { state.openSteps.add(id);    card.classList.add('open'); }
+}
+
+// ── STACKS ───────────────────────────────────────────────────
+function toggleStack(id) {
+  const layer = document.getElementById('card-' + id);
+  const body  = document.getElementById('body-' + id);
+  if (!layer || !body) return;
+  const isOpen = state.openStacks.has(id);
+  if (isOpen) { state.openStacks.delete(id); layer.classList.remove('open'); }
+  else         { state.openStacks.add(id);    layer.classList.add('open'); }
+}
+
+// ── HIGHLIGHTS ───────────────────────────────────────────────
+function toggleHighlight(e, id) {
+  e.stopPropagation();
+  const card = document.getElementById('card-' + id);
+  const btn  = e.currentTarget;
+  if (state.highlights.has(id)) {
+    state.highlights.delete(id);
+    card.classList.remove('highlighted');
+    btn.classList.remove('star-on');
+  } else {
+    state.highlights.add(id);
+    card.classList.add('highlighted');
+    btn.classList.add('star-on');
+  }
+}
+function clearAllHighlights() {
+  state.highlights.forEach(id => {
+    const card = document.getElementById('card-' + id);
+    if (card) { card.classList.remove('highlighted'); }
+    document.querySelectorAll(`#card-${id} .action-btn`).forEach(b => b.classList.remove('star-on'));
+  });
+  state.highlights.clear();
+}
+function toggleHighlightMode() {
+  state.highlightMode = !state.highlightMode;
+  document.getElementById('highlightsBtn').classList.toggle('active', state.highlightMode);
+}
+
+// ── NOTES ────────────────────────────────────────────────────
+function toggleNote(e, id) {
+  if (e) e.stopPropagation();
+  const zone = document.getElementById('note-' + id);
+  if (!zone) return;
+  const isOpen = state.openNotes.has(id);
+  if (isOpen) { zone.classList.remove('open'); state.openNotes.delete(id); }
+  else         { zone.classList.add('open');    state.openNotes.add(id);
+    // Pre-fill with existing note
+    const inp = document.getElementById('note-input-' + id);
+    if (inp && state.notes[id]) inp.value = state.notes[id];
+    if (inp) setTimeout(() => inp.focus(), 50);
+  }
+}
+function saveNote(id) {
+  const inp = document.getElementById('note-input-' + id);
+  if (!inp) return;
+  const text = inp.value.trim();
+  state.notes[id] = text;
+  // Show note display
+  const display = document.getElementById('note-display-' + id);
+  if (display) {
+    if (text) {
+      display.style.display = 'block';
+      display.innerHTML = `<div class="note-display-header"><span class="note-label">📝 NOTE</span><button class="note-edit-btn" onclick="toggleNote(null,'${id}')">Edit</button></div>${escapeHtml(text)}`;
+    } else {
+      display.style.display = 'none';
+    }
+  }
+  toggleNote(null, id);
+}
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ── EXPORT NOTES ─────────────────────────────────────────────
+function exportNotes() {
+  const entries = Object.entries(state.notes).filter(([,v]) => v.trim());
+  if (!entries.length) { alert('No notes saved yet.'); return; }
+  const lines = entries.map(([k,v]) => `[${k}]\n${v}`).join('\n\n---\n\n');
+  const blob = new Blob(['AI Infrastructure Roadmap Notes\n' + new Date().toLocaleDateString() + '\n\n' + lines], {type: 'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'roadmap-notes.txt';
+  a.click();
+}
+
+// ── SEARCH ───────────────────────────────────────────────────
+function handleSearch(q) {
+  state.searchQuery = q.trim().toLowerCase();
+  const clearBtn = document.getElementById('searchClear');
+  clearBtn.style.display = q ? 'block' : 'none';
+  applySearch(state.searchQuery);
+}
+
+function applySearch(q) {
+  const allCards = document.querySelectorAll('.step-card, .stack-layer');
+  const countEl  = document.getElementById('searchCount');
+  const infoEl   = document.getElementById('searchInfo');
+
+  // Remove old highlights
+  document.querySelectorAll('mark.hl').forEach(m => {
+    m.parentNode.replaceChild(document.createTextNode(m.textContent), m);
+  });
+
+  if (!q) {
+    allCards.forEach(c => { c.classList.remove('dimmed','search-match'); });
+    countEl.textContent = '';
+    infoEl.classList.remove('visible');
+    return;
+  }
+
+  let matchCount = 0;
+  allCards.forEach(card => {
+    const searchText = (card.dataset.searchText || '') + ' ' + (card.textContent || '');
+    const matches = searchText.toLowerCase().includes(q);
+    if (matches) {
+      matchCount++;
+      card.classList.remove('dimmed');
+      card.classList.add('search-match');
+      // Auto-open matched step
+      const id = card.id.replace('card-','');
+      if (card.classList.contains('step-card') && !state.openSteps.has(id)) {
+        state.openSteps.add(id); card.classList.add('open');
+      }
+      if (card.classList.contains('stack-layer') && !state.openStacks.has(id)) {
+        state.openStacks.add(id); card.classList.add('open');
+      }
+    } else {
+      card.classList.add('dimmed');
+      card.classList.remove('search-match');
+    }
+  });
+
+  countEl.textContent = matchCount ? `${matchCount} match${matchCount > 1 ? 'es' : ''}` : 'No matches';
+  infoEl.textContent = q ? `Showing results for "${q}" — ${matchCount} card${matchCount !== 1 ? 's' : ''} matched` : '';
+  infoEl.classList.toggle('visible', !!q);
+}
+
+function clearSearch() {
+  const inp = document.getElementById('searchInput');
+  inp.value = '';
+  handleSearch('');
+  inp.focus();
+}
+
+// ── KEYBOARD SHORTCUTS ────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    document.getElementById('searchInput').focus();
+  }
+  if (e.key === 'Escape') {
+    clearSearch();
+    document.getElementById('searchInput').blur();
+  }
+});
+
+// Hint in placeholder
+document.getElementById('searchInput').placeholder = 'Search (⌘K) — substation, ERCOT, IRR…';
+</script>
+</body>
+</html>

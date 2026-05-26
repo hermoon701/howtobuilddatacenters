@@ -1,1361 +1,1435 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Infrastructure Roadmap · Build a Data Center</title>
+<title>How to Build a Data Center — AI Infrastructure Roadmap</title>
 <style>
-/* ── RESET & BASE ───────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ════════════════════════════════
+   DESIGN TOKENS (Light Theme)
+════════════════════════════════ */
 :root {
-  --bg:        #0D1117;
-  --bg2:       #161B22;
-  --card:      #1C2128;
-  --card2:     #21262D;
-  --border:    #30363D;
-  --green:     #22C55E;
-  --amber:     #F59E0B;
-  --blue:      #3B82F6;
-  --purple:    #A855F7;
-  --red:       #F87171;
-  --white:     #E6EDF3;
-  --muted:     #8B949E;
-  --highlight: #FDE047;
-  --note-bg:   #1A1600;
-  --note-border:#78716C;
-  --search-hl: rgba(253,224,71,0.25);
-}
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--bg);
-  color: var(--white);
-  min-height: 100vh;
-  font-size: 14px;
-  line-height: 1.6;
-}
-a { color: var(--blue); text-decoration: none; }
-a:hover { text-decoration: underline; }
-mark.hl { background: var(--search-hl); color: inherit; border-radius: 2px; }
+  --bg:        #f0f2f8;
+  --surface:   #ffffff;
+  --surface2:  #f5f7fc;
+  --border:    #dce1ee;
+  --border-strong: #b8c0d8;
 
-/* ── TOP BAR ────────────────────────────────────────────── */
+  --amber:     #c47a0a;
+  --amber-bg:  rgba(196,122,10,0.08);
+  --amber-bd:  rgba(196,122,10,0.28);
+
+  --blue:      #1d4ed8;
+  --blue-bg:   rgba(29,78,216,0.07);
+  --blue-bd:   rgba(29,78,216,0.25);
+
+  --green:     #15803d;
+  --green-bg:  rgba(21,128,61,0.07);
+  --green-bd:  rgba(21,128,61,0.25);
+
+  --red:       #b91c1c;
+  --red-bg:    rgba(185,28,28,0.06);
+  --red-bd:    rgba(185,28,28,0.22);
+
+  --purple:    #6d28d9;
+  --purple-bg: rgba(109,40,217,0.07);
+  --purple-bd: rgba(109,40,217,0.25);
+
+  --text:      #111827;
+  --text-2:    #374151;
+  --text-3:    #6b7280;
+  --text-4:    #9ca3af;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.05);
+}
+
+/* ════════════════════════════════
+   RESET & BASE
+════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14.5px;
+  line-height: 1.65;
+}
+
+/* ════════════════════════════════
+   TOPBAR
+════════════════════════════════ */
 .topbar {
   position: sticky; top: 0; z-index: 100;
-  background: rgba(13,17,23,0.95);
-  backdrop-filter: blur(8px);
+  background: rgba(240,242,248,0.93);
+  backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
-  padding: 10px 20px;
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 32px; gap: 16px;
 }
-.topbar-title { font-weight: 700; font-size: 13px; color: var(--amber); white-space: nowrap; }
+.topbar-brand {
+  display: flex; align-items: center; gap: 10px;
+}
+.topbar-icon {
+  width: 28px; height: 28px; border-radius: 7px;
+  background: linear-gradient(135deg, var(--amber), #e8a020);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0;
+}
+.topbar-title {
+  font-size: 13px; font-weight: 700; color: var(--text-2);
+  letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap;
+}
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
 
-.search-wrap {
-  position: relative; flex: 1; min-width: 180px; max-width: 320px;
-}
-.search-wrap input {
-  width: 100%; padding: 6px 32px 6px 10px;
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 6px; color: var(--white); font-size: 13px;
-  outline: none; transition: border-color .2s;
-}
-.search-wrap input:focus { border-color: var(--blue); }
-.search-wrap input::placeholder { color: var(--muted); }
-.search-clear {
-  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-  cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1;
-  display: none;
-}
-.search-count {
-  font-size: 11px; color: var(--muted); white-space: nowrap;
-}
-
-.topbar-btn {
-  padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 600;
-  border: 1px solid var(--border); background: transparent;
-  color: var(--muted); cursor: pointer; transition: all .15s; white-space: nowrap;
-}
-.topbar-btn:hover { border-color: var(--amber); color: var(--amber); }
-.topbar-btn.active { background: var(--amber); color: #000; border-color: var(--amber); }
-
-/* ── MAIN LAYOUT ────────────────────────────────────────── */
-.main { max-width: 960px; margin: 0 auto; padding: 20px; }
-
-/* ── THESIS BOX ─────────────────────────────────────────── */
-.thesis {
-  background: var(--card); border-left: 4px solid var(--red);
-  border-radius: 8px; padding: 14px 18px; margin-bottom: 22px;
-  font-size: 13px; line-height: 1.65;
-}
-.thesis strong { color: var(--red); }
-
-/* ── TABS ───────────────────────────────────────────────── */
-.tabs { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
-.tab {
-  padding: 7px 16px; border-radius: 20px; font-size: 12px; font-weight: 600;
-  cursor: pointer; border: 1.5px solid var(--border); background: transparent;
-  color: var(--muted); transition: all .18s;
-}
-.tab.active { background: #1a1a2e; color: var(--white); border-color: #3a3a5e; }
-
-/* ── PANEL ──────────────────────────────────────────────── */
-.panel { display: none; }
-.panel.active { display: block; }
-
-/* ── PHASE GROUPS ───────────────────────────────────────── */
-.phase-group { margin-bottom: 28px; }
-.phase-label {
-  font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
-  text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+.search-trigger {
   display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 14px; cursor: pointer;
+  color: var(--text-3); font-size: 13px; transition: all 0.15s;
+  min-width: 190px;
 }
-.phase-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.search-trigger:hover { border-color: var(--blue); color: var(--text-2); }
+.search-trigger .kbd {
+  margin-left: auto; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 6px; font-size: 11px; font-family: monospace;
+  color: var(--text-4);
+}
+.tbtn {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 12px; cursor: pointer; color: var(--text-3); font-size: 12.5px;
+  font-weight: 500; transition: all 0.15s; white-space: nowrap;
+}
+.tbtn:hover { border-color: var(--amber); color: var(--amber); }
+.tbtn.active { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
+.tbtn.blue-btn:hover { border-color: var(--blue); color: var(--blue); }
 
-/* ── STEP CARD ──────────────────────────────────────────── */
-.step-card {
-  border-radius: 8px; margin-bottom: 8px; overflow: hidden;
-  border: 1px solid var(--border);
-  transition: border-color .18s, box-shadow .18s;
-  position: relative;
+/* ════════════════════════════════
+   SEARCH OVERLAY
+════════════════════════════════ */
+.search-overlay {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(17,24,39,0.4); backdrop-filter: blur(5px);
+  align-items: flex-start; justify-content: center; padding-top: 72px;
 }
-.step-card.highlighted {
-  border-color: var(--highlight) !important;
-  box-shadow: 0 0 0 1px var(--highlight);
+.search-overlay.open { display: flex; }
+.search-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; width: 560px; max-width: 92vw; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
 }
-.step-card.dimmed { opacity: 0.3; }
-.step-card.search-match { opacity: 1 !important; }
+.search-input-wrap {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+.search-input-wrap svg { color: var(--text-3); flex-shrink: 0; }
+#searchInput {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--text); font-size: 16px; font-family: inherit;
+}
+#searchInput::placeholder { color: var(--text-4); }
+.search-hint { padding: 10px 20px; font-size: 12px; color: var(--text-4); }
+
+/* ════════════════════════════════
+   LAYOUT
+════════════════════════════════ */
+.page { max-width: 940px; margin: 0 auto; padding: 44px 24px 120px; }
+
+/* ════════════════════════════════
+   THESIS BOX
+════════════════════════════════ */
+.thesis {
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 4px solid var(--amber);
+  border-radius: 12px; padding: 28px 32px; margin-bottom: 44px;
+  box-shadow: var(--shadow-sm);
+}
+.thesis-eyebrow {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--amber); margin-bottom: 10px;
+}
+.thesis-text {
+  font-size: 17.5px; font-weight: 500; color: var(--text);
+  line-height: 1.6; margin-bottom: 12px;
+}
+.thesis-sub { font-size: 13.5px; color: var(--text-3); line-height: 1.7; }
+
+/* ════════════════════════════════
+   PHASE HEADERS
+════════════════════════════════ */
+.phase-header {
+  display: flex; align-items: center; gap: 12px; margin: 44px 0 14px;
+}
+.phase-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; padding: 3px 10px; border-radius: 20px;
+  flex-shrink: 0;
+}
+.phase-badge.p1 { background: var(--amber-bg); border: 1px solid var(--amber-bd); color: var(--amber); }
+.phase-badge.p2 { background: var(--blue-bg); border: 1px solid var(--blue-bd); color: var(--blue); }
+.phase-badge.p3 { background: var(--purple-bg); border: 1px solid var(--purple-bd); color: var(--purple); }
+.phase-badge.p4 { background: var(--green-bg); border: 1px solid var(--green-bd); color: var(--green); }
+.phase-badge.ctx { background: var(--surface2); border: 1px solid var(--border); color: var(--text-3); }
+.phase-name { font-size: 13.5px; font-weight: 700; color: var(--text-2); }
+.phase-line { flex: 1; height: 1px; background: var(--border); }
+
+/* ════════════════════════════════
+   STEP CARDS
+════════════════════════════════ */
+.step {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; margin-bottom: 10px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s, border-color 0.2s, opacity 0.2s;
+  overflow: hidden;
+}
+.step:hover { box-shadow: var(--shadow-md); }
+.step.hidden { opacity: 0.12; pointer-events: none; }
+.step.starred { border-color: var(--amber); border-left: 3px solid var(--amber); }
+
+/* Phase-tinted left borders when open */
+.step.phase1 { border-left: 3px solid transparent; }
+.step.phase1.open { border-left-color: var(--amber); }
+.step.phase2 { border-left: 3px solid transparent; }
+.step.phase2.open { border-left-color: var(--blue); }
+.step.phase3 { border-left: 3px solid transparent; }
+.step.phase3.open { border-left-color: var(--purple); }
+.step.phase4 { border-left: 3px solid transparent; }
+.step.phase4.open { border-left-color: var(--green); }
+.step.starred { border-left-color: var(--amber) !important; }
 
 .step-header {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px; cursor: pointer;
-  background: var(--card); user-select: none;
-  transition: background .15s;
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 18px 20px; cursor: pointer; user-select: none;
+  transition: background 0.12s;
 }
-.step-header:hover { background: var(--card2); }
+.step-header:hover { background: rgba(29,78,216,0.03); }
 
 .step-num {
-  width: 26px; height: 26px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700; flex-shrink: 0; color: #fff;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em;
+  color: var(--text-4); min-width: 26px; padding-top: 3px; font-family: monospace;
 }
-.step-info { flex: 1; min-width: 0; }
-.step-title { font-size: 13.5px; font-weight: 600; }
-.step-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.step-meta { flex: 1; min-width: 0; }
+.step-title { font-size: 15.5px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.step-sub { font-size: 12.5px; color: var(--text-3); line-height: 1.5; }
 
-.step-actions {
-  display: flex; gap: 4px; flex-shrink: 0;
+.step-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding-top: 2px; }
+.star-btn {
+  background: none; border: none; cursor: pointer; font-size: 15px;
+  opacity: 0.25; transition: opacity 0.15s, transform 0.15s; line-height: 1; padding: 2px;
 }
-.action-btn {
-  width: 26px; height: 26px; border-radius: 5px; border: none;
-  background: transparent; cursor: pointer; font-size: 14px;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--muted); transition: background .15s, color .15s;
+.star-btn:hover { opacity: 0.7; transform: scale(1.2); }
+.step.starred .star-btn { opacity: 1; }
+.chevron { color: var(--text-4); transition: transform 0.22s; font-size: 16px; line-height: 1; }
+.step.open .chevron { transform: rotate(90deg); }
+
+.step-body { display: none; border-top: 1px solid var(--border); padding: 0 20px 22px; }
+.step.open .step-body { display: block; }
+.step-body-inner { padding-top: 20px; }
+
+/* ════════════════════════════════
+   CONTENT COMPONENTS
+════════════════════════════════ */
+/* Stat Block */
+.stat-block { display: flex; align-items: baseline; gap: 10px; margin: 16px 0; }
+.stat-num { font-size: 46px; font-weight: 900; letter-spacing: -0.03em; line-height: 1; color: var(--amber); }
+.stat-num.blue { color: var(--blue); }
+.stat-num.green { color: var(--green); }
+.stat-num.red { color: var(--red); }
+.stat-label { font-size: 13px; color: var(--text-3); line-height: 1.5; }
+
+/* Info rows */
+.info-table { margin: 14px 0; }
+.ir {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--border);
+  font-size: 13px;
 }
-.action-btn:hover { background: var(--border); color: var(--white); }
-.action-btn.star-on { color: var(--highlight); }
+.ir:last-child { border-bottom: none; }
+.ir-k { color: var(--text-3); min-width: 150px; flex-shrink: 0; font-weight: 500; }
+.ir-v { color: var(--text-2); }
 
-.chevron {
-  width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
-  color: var(--muted); transition: transform .2s; flex-shrink: 0;
+/* Grid */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 14px 0; }
+
+/* Criteria card */
+.crit {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 9px; padding: 14px 15px;
 }
-.step-card.open .chevron { transform: rotate(90deg); }
-
-.step-body {
-  display: none; background: var(--bg2);
-  border-top: 1px solid var(--border);
-  padding: 16px;
+.crit-label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; margin-bottom: 5px;
 }
-.step-card.open .step-body { display: block; }
+.crit-label.a { color: var(--amber); }
+.crit-label.b { color: var(--blue); }
+.crit-label.g { color: var(--green); }
+.crit-label.r { color: var(--red); }
+.crit-text { font-size: 12.5px; color: var(--text-3); line-height: 1.55; }
 
-/* ── STEP BODY CONTENT ──────────────────────────────────── */
-.detail-text { font-size: 12.5px; color: var(--muted); line-height: 1.7; margin-bottom: 12px; }
-.detail-text strong { color: var(--white); }
-
-.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+/* Tags */
+.tags { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0; }
 .tag {
-  display: inline-block; padding: 3px 9px; border-radius: 12px;
-  font-size: 10.5px; font-weight: 600; border: 1px solid;
+  font-size: 11.5px; padding: 3px 10px; border-radius: 20px;
+  font-weight: 500; border: 1px solid;
 }
+.tag.a { color: var(--amber); border-color: var(--amber-bd); background: var(--amber-bg); }
+.tag.b { color: var(--blue); border-color: var(--blue-bd); background: var(--blue-bg); }
+.tag.g { color: var(--green); border-color: var(--green-bd); background: var(--green-bg); }
+.tag.r { color: var(--red); border-color: var(--red-bd); background: var(--red-bg); }
+.tag.p { color: var(--purple); border-color: var(--purple-bd); background: var(--purple-bg); }
+.tag.n { color: var(--text-3); border-color: var(--border); background: var(--surface2); }
 
-.criteria-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
-.criteria-card {
-  background: var(--card); border-radius: 6px; padding: 10px 12px;
-  border-left: 3px solid;
+/* Warning cards */
+.warn {
+  border-left: 3px solid var(--red); background: var(--red-bg);
+  border-radius: 0 8px 8px 0; padding: 13px 15px; margin: 9px 0;
 }
-.criteria-card .crit-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
-.criteria-card .crit-body { font-size: 11px; color: var(--muted); line-height: 1.55; }
+.warn-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--red); margin-bottom: 5px;
+}
+.warn-body { font-size: 13px; color: var(--text-2); line-height: 1.6; }
 
-/* ── MAP RESOURCES (Step 2) ─────────────────────────────── */
-.map-section { margin-top: 16px; }
-.map-section-title {
-  font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
-  color: var(--green); margin-bottom: 10px;
-  display: flex; align-items: center; gap: 6px;
+/* Insight cards (positive) */
+.insight {
+  border-left: 3px solid var(--blue); background: var(--blue-bg);
+  border-radius: 0 8px 8px 0; padding: 13px 15px; margin: 9px 0;
 }
-.map-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.insight-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--blue); margin-bottom: 5px;
+}
+.insight-body { font-size: 13px; color: var(--text-2); line-height: 1.6; }
+
+/* Map cards */
+.map-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
 .map-card {
-  background: var(--card); border-radius: 8px; padding: 12px;
-  border: 1px solid var(--border); transition: border-color .18s;
-  cursor: pointer;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 15px 16px; text-decoration: none;
+  display: block; transition: all 0.15s; position: relative; overflow: hidden;
 }
-.map-card:hover { border-color: var(--green); }
-.map-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; margin-bottom: 6px; }
-.map-card-name { font-size: 12.5px; font-weight: 700; color: var(--white); }
-.map-card-badge {
-  font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
-  background: rgba(34,197,94,0.15); color: var(--green); white-space: nowrap; flex-shrink: 0;
+.map-card::after {
+  content: '↗'; position: absolute; top: 12px; right: 14px;
+  font-size: 13px; color: var(--text-4); transition: color 0.15s;
 }
-.map-card-desc { font-size: 11px; color: var(--muted); line-height: 1.55; margin-bottom: 8px; }
-.map-card-shows { font-size: 10px; color: var(--muted); }
-.map-card-shows span { color: var(--green); }
-.map-card-link {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 11px; font-weight: 600; color: var(--green);
-  margin-top: 8px; text-decoration: none;
+.map-card:hover { border-color: var(--blue); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.map-card:hover::after { color: var(--blue); }
+.map-card .mc-eyebrow {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--blue); margin-bottom: 5px;
 }
-.map-card-link:hover { text-decoration: underline; }
+.map-card .mc-title { font-size: 13.5px; font-weight: 700; color: var(--text); margin-bottom: 4px; padding-right: 20px; }
+.map-card .mc-desc { font-size: 12px; color: var(--text-3); line-height: 1.55; }
 
-.screening-guide {
-  background: var(--card); border-radius: 8px; padding: 14px;
-  border: 1px solid var(--border); margin-bottom: 12px;
+/* Filter steps */
+.fsteps { counter-reset: fs; margin: 14px 0; }
+.fstep {
+  display: flex; gap: 13px; padding: 10px 0;
+  border-bottom: 1px solid var(--border); font-size: 13px;
 }
-.screening-guide h4 { font-size: 12px; font-weight: 700; color: var(--amber); margin-bottom: 10px; }
-.screening-step {
-  display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start;
+.fstep:last-child { border-bottom: none; }
+.fstep::before {
+  counter-increment: fs; content: counter(fs);
+  min-width: 22px; height: 22px; border-radius: 50%;
+  background: var(--blue-bg); border: 1px solid var(--blue-bd);
+  color: var(--blue); font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
 }
-.screening-num {
-  width: 20px; height: 20px; border-radius: 50%; background: var(--amber);
-  color: #000; font-size: 10px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  margin-top: 1px;
-}
-.screening-text { font-size: 11.5px; color: var(--muted); line-height: 1.55; }
-.screening-text strong { color: var(--white); }
+.fstep-title { font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.fstep-desc { color: var(--text-3); line-height: 1.55; }
 
-/* ── INTERCONNECTION DETAIL (Step 3) ────────────────────── */
-.queue-viz {
-  background: var(--card); border-radius: 8px; padding: 14px; margin-bottom: 12px;
-}
-.queue-viz h4 { font-size: 12px; font-weight: 700; color: var(--amber); margin-bottom: 12px; }
-.queue-stages { display: flex; gap: 0; overflow-x: auto; }
-.queue-stage {
-  flex: 1; min-width: 100px; text-align: center; position: relative;
-  padding: 10px 6px;
-}
-.queue-stage:not(:last-child)::after {
-  content: '→'; position: absolute; right: -6px; top: 50%; transform: translateY(-50%);
-  color: var(--muted); font-size: 16px;
-}
-.q-dot {
-  width: 32px; height: 32px; border-radius: 50%;
-  margin: 0 auto 6px; display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700;
-}
-.q-name { font-size: 10px; font-weight: 600; color: var(--white); margin-bottom: 3px; }
-.q-time { font-size: 9px; color: var(--muted); }
-
-.iso-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
-.iso-card { background: var(--card); border-radius: 6px; padding: 10px; border-left: 3px solid; }
-.iso-name { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
-.iso-region { font-size: 10px; color: var(--muted); margin-bottom: 6px; }
-.iso-stat { font-size: 11px; color: var(--white); }
-
-/* ── AI STACK ───────────────────────────────────────────── */
-.stack { display: flex; flex-direction: column; gap: 8px; }
+/* Stack layers */
+.stack { display: flex; flex-direction: column; gap: 4px; margin: 14px 0; }
 .stack-layer {
-  border-radius: 8px; overflow: hidden; cursor: pointer;
-  border: 1px solid var(--border); transition: border-color .18s;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 10px 15px; display: flex;
+  align-items: center; gap: 12px; transition: all 0.15s;
 }
-.stack-layer.highlighted { border-color: var(--highlight) !important; box-shadow: 0 0 0 1px var(--highlight); }
-.stack-layer.dimmed { opacity: 0.3; }
-.stack-layer.search-match { opacity: 1 !important; }
-.stack-header {
-  display: flex; align-items: center; gap: 10px; padding: 12px 16px; user-select: none;
-}
-.stack-icon { font-size: 18px; width: 28px; text-align: center; }
-.stack-name { font-size: 13px; font-weight: 700; flex: 1; }
-.stack-players { font-size: 11px; opacity: .7; }
-.stack-actions { display: flex; gap: 4px; }
-.stack-expand {
-  font-size: 12px; line-height: 1.65; color: var(--muted);
-  padding: 0 16px 14px 56px; display: none;
-}
-.stack-layer.open .stack-expand { display: block; }
-.stack-expand strong { color: var(--white); }
+.stack-layer:hover { border-color: var(--blue-bd); background: var(--blue-bg); }
+.sl-n { font-size: 10px; color: var(--text-4); min-width: 16px; font-family: monospace; font-weight: 700; }
+.sl-name { font-weight: 700; font-size: 13px; color: var(--text); min-width: 130px; }
+.sl-desc { font-size: 12.5px; color: var(--text-3); }
 
-/* ── GALAXY PANEL ───────────────────────────────────────── */
-.galaxy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-.g-card { border-radius: 10px; padding: 14px; font-size: 12.5px; line-height: 1.65; }
-.g-card h3 { font-size: 12px; font-weight: 700; margin-bottom: 8px; }
-.g-adv { background: #0d2b1a; }
-.g-adv h3 { color: var(--green); }
-.g-risk { background: #2a0a0a; }
-.g-risk h3 { color: var(--red); }
-.g-roi { background: var(--card); grid-column: span 2; }
-.g-roi h3 { color: var(--blue); }
+/* Section divider */
+.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 
-.questions { margin-top: 16px; }
-.q-item {
-  padding: 10px 14px; border-left: 3px solid var(--amber);
-  background: var(--card); border-radius: 0 6px 6px 0;
-  font-size: 12.5px; margin-bottom: 8px; line-height: 1.55;
-}
-.q-label { font-weight: 700; font-size: 10px; color: var(--muted); margin-bottom: 3px; letter-spacing: 1px; }
+/* Body text */
+p { font-size: 13.5px; color: var(--text-3); margin: 8px 0; line-height: 1.7; }
+p strong { color: var(--text-2); font-weight: 600; }
+h4 { font-size: 13px; font-weight: 700; color: var(--text-2); margin: 18px 0 8px; }
 
-/* ── NOTES ──────────────────────────────────────────────── */
-.note-zone { display: none; padding: 10px 14px; background: var(--note-bg); border-top: 1px solid var(--note-border); }
-.note-zone.open { display: block; }
-.note-zone textarea {
-  width: 100%; min-height: 72px; padding: 8px 10px;
-  background: var(--card); border: 1px solid var(--note-border);
-  border-radius: 5px; color: var(--white); font-size: 12px;
-  font-family: inherit; resize: vertical; outline: none; line-height: 1.55;
-}
-.note-zone textarea:focus { border-color: var(--amber); }
-.note-actions { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
-.note-save {
-  padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: 600;
-  border: none; background: var(--amber); color: #000; cursor: pointer;
-}
-.note-save:hover { background: #fbbf24; }
-.note-discard {
-  padding: 4px 10px; border-radius: 4px; font-size: 11px;
-  border: 1px solid var(--border); background: transparent;
-  color: var(--muted); cursor: pointer;
-}
-.note-hint { font-size: 10px; color: var(--muted); margin-left: auto; }
+/* ════════════════════════════════
+   REVENUE SECTION (special)
+════════════════════════════════ */
+.revenue-section { margin: 44px 0 0; }
+.rev-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
 
-.note-display {
-  margin: 0 14px 10px; padding: 8px 12px;
-  background: var(--note-bg); border: 1px solid var(--note-border);
-  border-radius: 5px; font-size: 12px; color: #d4a; line-height: 1.55;
-  white-space: pre-wrap;
+.rev-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-sm);
 }
-.note-display-header {
+.rev-card-header {
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.rev-card-header.amber-h { background: linear-gradient(135deg, rgba(196,122,10,0.08), rgba(196,122,10,0.02)); border-bottom-color: var(--amber-bd); }
+.rev-card-header.blue-h  { background: linear-gradient(135deg, rgba(29,78,216,0.08), rgba(29,78,216,0.02)); border-bottom-color: var(--blue-bd); }
+
+.rev-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.13em;
+  text-transform: uppercase; margin-bottom: 4px;
+}
+.rev-label.a { color: var(--amber); }
+.rev-label.b { color: var(--blue); }
+.rev-title { font-size: 17px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+.rev-sub { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+
+.rev-body { padding: 18px 22px; }
+
+.price-table { margin: 12px 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.price-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px;
+}
+.price-row:last-child { border-bottom: none; }
+.price-row:first-child { background: var(--surface2); font-weight: 700; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-3); }
+.pr-tier { color: var(--text-2); font-weight: 600; }
+.pr-size { color: var(--text-3); }
+.pr-price { font-weight: 700; }
+.pr-price.a { color: var(--amber); }
+.pr-price.b { color: var(--blue); }
+
+.formula-box {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 13px 16px; margin: 12px 0;
+  font-size: 13px; font-family: monospace; color: var(--text-2); line-height: 1.7;
+}
+.formula-box span { color: var(--text-3); }
+
+.econ-row {
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 4px;
+  padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px;
 }
-.note-label { font-size: 10px; font-weight: 700; color: var(--note-border); letter-spacing: 1px; }
-.note-edit-btn { font-size: 10px; color: var(--muted); cursor: pointer; background: none; border: none; }
-.note-edit-btn:hover { color: var(--amber); }
+.econ-row:last-child { border-bottom: none; }
+.econ-k { color: var(--text-3); }
+.econ-v { font-weight: 700; color: var(--text-2); }
+.econ-v.good { color: var(--green); }
+.econ-v.warn { color: var(--amber); }
+.econ-v.bad  { color: var(--red); }
 
-/* ── SEARCH HIGHLIGHT BAR ───────────────────────────────── */
-.search-bar-info {
-  padding: 8px 16px; background: rgba(253,224,71,0.08);
-  border-bottom: 1px solid rgba(253,224,71,0.2);
-  font-size: 12px; color: var(--muted); display: none;
+.pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+.pros, .cons {
+  background: var(--surface2); border-radius: 7px; padding: 11px 13px;
+  font-size: 12px;
 }
-.search-bar-info.visible { display: block; }
+.pros { border: 1px solid var(--green-bd); }
+.cons { border: 1px solid var(--red-bd); }
+.pros-title { font-weight: 700; color: var(--green); margin-bottom: 5px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; }
+.cons-title { font-weight: 700; color: var(--red); margin-bottom: 5px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; }
+.pros ul, .cons ul { padding-left: 14px; color: var(--text-3); }
+.pros li, .cons li { margin-bottom: 3px; line-height: 1.45; }
 
-/* ── RESPONSIVE ─────────────────────────────────────────── */
-@media (max-width: 600px) {
-  .criteria-grid, .map-cards, .galaxy-grid { grid-template-columns: 1fr; }
-  .iso-cards { grid-template-columns: 1fr 1fr; }
-  .g-roi { grid-column: span 1; }
-  .queue-stages { flex-direction: column; }
-  .queue-stage:not(:last-child)::after { content: '↓'; right: auto; top: auto; position: static; }
+/* ════════════════════════════════
+   GALAXY / THESIS CLOSING
+════════════════════════════════ */
+.galaxy-section {
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: 28px 30px; margin-top: 44px;
+  box-shadow: var(--shadow-sm);
+}
+.galaxy-eyebrow {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--blue); margin-bottom: 8px;
+}
+.galaxy-title { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 14px; }
+
+.moat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
+.moat {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 9px; padding: 14px 15px;
+}
+.moat-title { font-size: 12.5px; font-weight: 700; color: var(--blue); margin-bottom: 5px; }
+.moat-desc { font-size: 12px; color: var(--text-3); line-height: 1.55; }
+
+.closing-quote {
+  margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);
+  font-size: 14.5px; font-style: italic; color: var(--text-3); line-height: 1.7;
 }
 
-/* ── SCROLLBAR ──────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+/* ════════════════════════════════
+   NOTES
+════════════════════════════════ */
+.note-section { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 13px; }
+.note-toggle {
+  font-size: 11.5px; font-weight: 600; color: var(--text-4);
+  cursor: pointer; display: flex; align-items: center; gap: 5px;
+  transition: color 0.15s; user-select: none;
+}
+.note-toggle:hover { color: var(--blue); }
+.note-wrap { display: none; margin-top: 10px; }
+.note-wrap.open { display: block; }
+.note-ta {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 13px; color: var(--text); font-size: 13px;
+  font-family: inherit; resize: vertical; min-height: 68px; outline: none;
+  transition: border-color 0.15s;
+}
+.note-ta:focus { border-color: var(--blue); }
+.note-actions { display: flex; gap: 7px; margin-top: 6px; }
+.note-save { background: var(--blue); border: none; border-radius: 6px; padding: 5px 14px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; transition: opacity 0.15s; }
+.note-save:hover { opacity: 0.82; }
+.note-cancel { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; color: var(--text-3); font-size: 12px; cursor: pointer; }
+.note-display {
+  background: var(--blue-bg); border: 1px solid var(--blue-bd);
+  border-radius: 7px; padding: 10px 13px; font-size: 13px; color: var(--text-2);
+  margin-top: 8px; white-space: pre-wrap; word-break: break-word; display: none;
+}
+
+/* ════════════════════════════════
+   SCROLLBAR
+════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #c8cfe0; border-radius: 3px; }
+
+/* ════════════════════════════════
+   RESPONSIVE
+════════════════════════════════ */
+@media (max-width: 650px) {
+  .topbar { padding: 10px 14px; }
+  .search-trigger { min-width: 0; }
+  .search-trigger span { display: none; }
+  .page { padding: 24px 14px 80px; }
+  .grid2, .grid3, .map-grid, .moat-grid, .rev-cards, .pros-cons { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
+<!-- ══ TOPBAR ══ -->
 <div class="topbar">
-  <span class="topbar-title">⚡ AI Infra Roadmap</span>
-  <div class="search-wrap">
-    <input type="text" id="searchInput" placeholder="Search steps, concepts…" oninput="handleSearch(this.value)">
-    <span class="search-clear" id="searchClear" onclick="clearSearch()">×</span>
+  <div class="topbar-brand">
+    <div class="topbar-icon">⚡</div>
+    <span class="topbar-title">AI Infrastructure Roadmap</span>
   </div>
-  <span class="search-count" id="searchCount"></span>
-  <button class="topbar-btn" id="highlightsBtn" onclick="toggleHighlightMode()">⭐ Highlights</button>
-  <button class="topbar-btn" onclick="clearAllHighlights()">Clear ⭐</button>
-  <button class="topbar-btn" onclick="exportNotes()">📋 Export Notes</button>
+  <div class="topbar-actions">
+    <div class="search-trigger" onclick="openSearch()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <span>Search steps…</span>
+      <span class="kbd">⌘K</span>
+    </div>
+    <button class="tbtn" onclick="toggleStarFilter()" id="starBtn">⭐ Starred</button>
+    <button class="tbtn" onclick="clearStars()">Clear ⭐</button>
+    <button class="tbtn blue-btn" onclick="exportNotes()">Export Notes</button>
+  </div>
 </div>
 
-<div class="search-bar-info" id="searchInfo"></div>
-
-<!-- MAIN -->
-<div class="main">
-
-  <!-- THESIS -->
-  <div class="thesis">
-    <strong>核心论点：</strong>AI的瓶颈已经不是模型创新本身，而是
-    <strong>电力可用性、算力部署能力和通电速度（time-to-power）</strong>。<br>
-    谁掌握了 approved power + 成熟的基础设施，谁就掌握了AI供应链的关键节点。
+<!-- ══ SEARCH OVERLAY ══ -->
+<div class="search-overlay" id="searchOverlay" onclick="closeIfBackdrop(event)">
+  <div class="search-box">
+    <div class="search-input-wrap">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="searchInput" type="text" placeholder="Search steps, keywords, tools…" oninput="doSearch(this.value)" autocomplete="off"/>
+    </div>
+    <div class="search-hint">Press <strong>Esc</strong> to close · Results filter instantly</div>
   </div>
+</div>
 
-  <!-- TABS -->
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('roadmap',this)">🏗️ 开发 Roadmap</button>
-    <button class="tab" onclick="switchTab('stack',this)">⚙️ AI 技术栈</button>
-    <button class="tab" onclick="switchTab('galaxy',this)">🌌 Galaxy 论点</button>
+<!-- ══ PAGE ══ -->
+<div class="page">
+
+<!-- THESIS -->
+<div class="thesis">
+  <div class="thesis-eyebrow">Core Thesis</div>
+  <div class="thesis-text">The AI buildout is fundamentally a power infrastructure problem. Every hyperscaler, fund, and co-location developer is racing for the same scarce resource — grid capacity. Whoever secures reliable, high-voltage power at scale, years ahead of demand, wins.</div>
+  <div class="thesis-sub">This roadmap covers the full lifecycle of developing an AI-ready data center in the United States — from site selection through to revenue — with deep coverage of the power bottleneck, supply chain constraints, and the two primary monetization paths: <strong>Colocation</strong> and <strong>GPU-as-a-Service</strong>.</div>
+</div>
+
+<!-- ══════════════════════════════════
+  PHASE 1 — SITE & POWER STRATEGY
+══════════════════════════════════ -->
+<div class="phase-header">
+  <span class="phase-badge p1">Phase 1</span>
+  <span class="phase-name">Site &amp; Power Strategy</span>
+  <div class="phase-line"></div>
+</div>
+
+<!-- STEP 1 -->
+<div class="step phase1" id="s1" data-kw="state ercot texas power grid deregulated market pjm miso site selection">
+  <div class="step-header" onclick="toggle('s1')">
+    <span class="step-num">01</span>
+    <div class="step-meta">
+      <div class="step-title">Choose Your State</div>
+      <div class="step-sub">Market structure, grid reliability, and regulatory climate define your ceiling</div>
+    </div>
+    <div class="step-right">
+      <button class="star-btn" onclick="star(event,'s1')" title="Star">⭐</button>
+      <span class="chevron">›</span>
+    </div>
   </div>
+  <div class="step-body"><div class="step-body-inner">
+    <p>State selection is the highest-leverage decision in the process. Grid structure, permitting speed, tax incentives, power cost, and available land all vary dramatically — and none can be changed later.</p>
+    <div class="grid2">
+      <div class="crit"><div class="crit-label a">⚡ Grid Structure</div><div class="crit-text">Deregulated markets (ERCOT, PJM) allow direct power purchase agreements and often have faster interconnect timelines. Regulated states require working through the utility monopoly.</div></div>
+      <div class="crit"><div class="crit-label b">🏛 Regulatory Climate</div><div class="crit-text">Texas, Georgia, and Nevada are developer-friendly. Some states require Environmental Impact Statements (EIS) that can add 1–2 years. Check zoning pre-entitlements.</div></div>
+      <div class="crit"><div class="crit-label g">💰 Tax Incentives</div><div class="crit-text">Texas Chapter 313 abatements, data center sales tax exemptions on equipment (30+ states), and property tax abatements can reduce all-in cost by 15–25%.</div></div>
+      <div class="crit"><div class="crit-label a">🌬 Power Cost</div><div class="crit-text">All-in power cost ($/MWh) drives operating margins more than any other single factor. West Texas wind + solar can reach $25–$35/MWh, vs. $65–$90 in constrained Eastern markets.</div></div>
+    </div>
+    <div class="info-table">
+      <div class="ir"><span class="ir-k">Top Markets (2026)</span><span class="ir-v">Northern Virginia, Dallas/DFW, Phoenix, Atlanta, Chicago, Silicon Valley</span></div>
+      <div class="ir"><span class="ir-k">ERCOT Advantage</span><span class="ir-v">Deregulated, no FERC oversight, competitive energy pricing, 50+ GW of West Texas renewable generation</span></div>
+      <div class="ir"><span class="ir-k">Fastest Permitting</span><span class="ir-v">Texas, Nevada, Georgia — conditional use permits in 6–12 months vs. 18–36 months elsewhere</span></div>
+      <div class="ir"><span class="ir-k">Avoid</span><span class="ir-v">States with moratoriums on large power users, politically hostile local governments, or drought-impacted water systems</span></div>
+    </div>
+    <div class="tags">
+      <span class="tag a">ERCOT Preferred</span>
+      <span class="tag b">Deregulated Market</span>
+      <span class="tag g">Tax Abatement</span>
+      <span class="tag n">Chapter 313 (TX)</span>
+    </div>
+    <div class="note-section">
+      <div class="note-toggle" onclick="toggleNote('n1')">✏ Notes <span style="font-weight:400;font-size:11px;color:var(--text-4)">(click to expand)</span></div>
+      <div class="note-wrap" id="n1"><textarea class="note-ta" id="nt1" placeholder="Your notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('1')">Save</button><button class="note-cancel" onclick="toggleNote('n1')">Cancel</button></div><div class="note-display" id="nd1"></div></div>
+    </div>
+  </div></div>
+</div>
 
-  <!-- ═══════════════════════════════════════════════════════
-       PANEL 1 · ROADMAP
-  ═══════════════════════════════════════════════════════ -->
-  <div class="panel active" id="panel-roadmap">
+<!-- STEP 2 -->
+<div class="step phase1" id="s2" data-kw="land site substation transmission fiber flood eia hifld ercot fema map geography parcel">
+  <div class="step-header" onclick="toggle('s2')">
+    <span class="step-num">02</span>
+    <div class="step-meta">
+      <div class="step-title">Find the Right Land</div>
+      <div class="step-sub">Proximity to substations, transmission corridors, fiber, and flood-safe ground — all simultaneously</div>
+    </div>
+    <div class="step-right">
+      <button class="star-btn" onclick="star(event,'s2')" title="Star">⭐</button>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+  <div class="step-body"><div class="step-body-inner">
+    <p>The ideal parcel sits within 1–3 miles of a 345kV+ substation on a clear transmission corridor, with redundant fiber access, confirmed water rights, and FEMA Zone X flood status. All four criteria must be met — missing any one effectively eliminates the site for institutional-scale development.</p>
 
-    <!-- PHASE 1 -->
-    <div class="phase-group">
-      <div class="phase-label" style="color:var(--green)">Phase 1 · Site Selection</div>
-
-      <!-- STEP 1 -->
-      <div class="step-card" id="card-step1" data-search-text="choose state ercot texas miso pjm power market deregulated wind solar">
-        <div class="step-header" onclick="toggleStep('step1')">
-          <div class="step-num" style="background:var(--green)">1</div>
-          <div class="step-info">
-            <div class="step-title">Choose Your State</div>
-            <div class="step-sub">ERCOT · MISO · PJM · Southeast utilities</div>
-          </div>
-          <div class="step-actions">
-            <button class="action-btn" title="Highlight" onclick="toggleHighlight(event,'step1')">⭐</button>
-            <button class="action-btn" title="Add note" onclick="toggleNote(event,'step1')">✏️</button>
-          </div>
-          <div class="chevron">›</div>
-        </div>
-        <div class="step-body" id="body-step1">
-          <p class="detail-text">
-            这是整个项目的第一个决策，影响之后所有变量——电力成本、permitting速度、税收、土地可用性。
-          </p>
-          <div class="criteria-grid">
-            <div class="criteria-card" style="border-color:var(--amber)">
-              <div class="crit-title" style="color:var(--amber)">⚡ Power Market Structure</div>
-              <div class="crit-body">去管制化（deregulated）市场 = faster time-to-power。ERCOT（Texas）是最快的；PJM/MISO排队更长。</div>
-            </div>
-            <div class="criteria-card" style="border-color:var(--green)">
-              <div class="crit-title" style="color:var(--green)">🌬 Renewable Abundance</div>
-              <div class="crit-body">West Texas风能/太阳能充裕，stranded energy（孤立的可再生电）可以用来压低长期电价。</div>
-            </div>
-            <div class="criteria-card" style="border-color:var(--blue)">
-              <div class="crit-title" style="color:var(--blue)">🗺 Land &amp; Scale</div>
-              <div class="crit-body">需要大片土地支持multi-GW campus扩展，东西海岸土地稀缺且成本高。</div>
-            </div>
-            <div class="criteria-card" style="border-color:var(--purple)">
-              <div class="crit-title" style="color:var(--purple)">📋 Regulatory Speed</div>
-              <div class="crit-body">Texas、Wyoming、Nevada permitting通常比Massachusetts、California快数年。</div>
-            </div>
-          </div>
-          <div class="tag-row">
-            <span class="tag" style="color:var(--green);border-color:var(--green);background:rgba(34,197,94,0.1)">✓ ERCOT / West Texas — 推荐</span>
-            <span class="tag" style="color:var(--muted);border-color:var(--border)">MISO (Midwest)</span>
-            <span class="tag" style="color:var(--muted);border-color:var(--border)">PJM (Mid-Atlantic)</span>
-            <span class="tag" style="color:var(--muted);border-color:var(--border)">Southeast utilities</span>
-          </div>
-        </div>
-        <div class="note-display" id="note-display-step1" style="display:none"></div>
-        <div class="note-zone" id="note-step1">
-          <textarea id="note-input-step1" placeholder="Add your notes here…"></textarea>
-          <div class="note-actions">
-            <button class="note-save" onclick="saveNote('step1')">Save</button>
-            <button class="note-discard" onclick="toggleNote(null,'step1')">Cancel</button>
-            <span class="note-hint">Notes saved in this session</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- STEP 2 — EXPANDED WITH MAP RESOURCES -->
-      <div class="step-card" id="card-step2" data-search-text="find land substation transmission lines fiber permitting power site screening infrastructure map hifld eia ercot">
-        <div class="step-header" onclick="toggleStep('step2')">
-          <div class="step-num" style="background:var(--green)">2</div>
-          <div class="step-info">
-            <div class="step-title">Find Your Land</div>
-            <div class="step-sub">Power · Land · Fiber · Permitting · Infrastructure Maps</div>
-          </div>
-          <div class="step-actions">
-            <button class="action-btn" title="Highlight" onclick="toggleHighlight(event,'step2')">⭐</button>
-            <button class="action-btn" title="Add note" onclick="toggleNote(event,'step2')">✏️</button>
-          </div>
-          <div class="chevron">›</div>
-        </div>
-        <div class="step-body" id="body-step2">
-          <p class="detail-text">
-            四大核心筛选维度同时评估。每一条都是硬性门槛——不达标的地块直接排除。
-          </p>
-          <div class="criteria-grid">
-            <div class="criteria-card" style="border-color:var(--amber)">
-              <div class="crit-title" style="color:var(--amber)">⚡ Power</div>
-              <div class="crit-body">
-                <strong>Transmission lines：</strong>离345kV+高压线越近越好，每多1英里输电成本上升显著。<br>
-                <strong>Substation：</strong>附近有没有可用substation？有没有变压器容量余量？需要向utility查询。<br>
-                <strong>Redundancy：</strong>是否有双路供电保障？故障时是否有备用路由？
-              </div>
-            </div>
-            <div class="criteria-card" style="border-color:var(--green)">
-              <div class="crit-title" style="color:var(--green)">🗺 Land</div>
-              <div class="crit-body">
-                <strong>面积：</strong>至少预留200–500亩用于首期，且需要扩展空间至multi-GW。<br>
-                <strong>地形：</strong>平坦为佳，远离洪泛区（FEMA Flood Zone A/AE）。<br>
-                <strong>地震：</strong>核查USGS seismic hazard map，West Texas属低风险区。
-              </div>
-            </div>
-            <div class="criteria-card" style="border-color:var(--blue)">
-              <div class="crit-title" style="color:var(--blue)">🌐 Fiber Infrastructure</div>
-              <div class="crit-body">
-                <strong>Long-haul fiber：</strong>附近是否有AT&amp;T、Lumen、Zayo等carrier的fiber route。<br>
-                <strong>Carrier presence：</strong>多家carrier竞争→降低带宽成本。<br>
-                <strong>用途：</strong>inference networking、distributed training、cloud connectivity。
-              </div>
-            </div>
-            <div class="criteria-card" style="border-color:var(--purple)">
-              <div class="crit-title" style="color:var(--purple)">📋 Permitting Timeline</div>
-              <div class="crit-body">
-                <strong>Zoning：</strong>当前土地用途是否允许工业/数据中心？<br>
-                <strong>Environmental：</strong>环境影响评估（EIA）是否触发NEPA审查？<br>
-                <strong>Water：</strong>水冷需要水权（water rights），West Texas水资源有限需提前规划。<br>
-                <strong>Utility approval：</strong>grid接入正式审批。
-              </div>
-            </div>
-          </div>
-
-          <!-- SITE SCREENING WORKFLOW -->
-          <div class="map-section">
-            <div class="map-section-title">🗺 Infrastructure Screening Workflow</div>
-            <div class="screening-guide">
-              <h4>如何用地图筛选datacenter候选地块（Step-by-step）</h4>
-              <div class="screening-step">
-                <div class="screening-num">1</div>
-                <div class="screening-text">
-                  <strong>Region-level screening（EIA Energy Atlas）</strong><br>
-                  先在宏观层面找 transmission corridor 密集区域。打开EIA Atlas，开启"Electric Power Transmission Lines"图层，筛选345kV及以上高压线。高压线密集区域 = 电力供应稳定、interconnection成本低。
-                </div>
-              </div>
-              <div class="screening-step">
-                <div class="screening-num">2</div>
-                <div class="screening-text">
-                  <strong>Substation定位（HIFLD Substations Map）</strong><br>
-                  在目标区域内找具体substation。用HIFLD地图筛选：Max Voltage ≥ 345kV，State = TX（或你的目标州）。找到候选substation后，记下名称和坐标，作为选址的锚点。
-                </div>
-              </div>
-              <div class="screening-step">
-                <div class="screening-num">3</div>
-                <div class="screening-text">
-                  <strong>Land可用性交叉验证</strong><br>
-                  以候选substation为圆心，在半径5–10英里范围内寻找可用土地。工具：Google Maps（卫星图看地形）、County GIS portals（看地块ownership）、FEMA Flood Map（排除洪泛区）。
-                </div>
-              </div>
-              <div class="screening-step">
-                <div class="screening-num">4</div>
-                <div class="screening-text">
-                  <strong>Utility Capacity查询</strong><br>
-                  联系当地utility（ERCOT territory内直接联系transmission owner，如Oncor、AEP）查询substation是否有available headroom。这一步需要正式沟通，但前三步可独立完成。
-                </div>
-              </div>
-              <div class="screening-step">
-                <div class="screening-num">5</div>
-                <div class="screening-text">
-                  <strong>Fiber Route确认</strong><br>
-                  用TeleGeography或直接联系AT&amp;T、Lumen、Zayo查当地fiber route分布。也可以看county道路沿线——major carrier通常沿高速公路敷设fiber。
-                </div>
-              </div>
-            </div>
-
-            <!-- MAP RESOURCE CARDS -->
-            <div class="map-section-title" style="margin-top:14px">🔗 Infrastructure Map Resources</div>
-            <div class="map-cards">
-              <div class="map-card" onclick="window.open('https://atlas.eia.gov','_blank')">
-                <div class="map-card-header">
-                  <div class="map-card-name">EIA Energy Atlas</div>
-                  <div class="map-card-badge">FREE · US-wide</div>
-                </div>
-                <div class="map-card-desc">美国能源信息署的交互式地图，最佳宏观筛选工具。可叠加多个图层同时查看电力基础设施分布。</div>
-                <div class="map-card-shows">显示：<span>输电线路 · 发电厂 · 变电站 · 可再生资源</span></div>
-                <a class="map-card-link" href="https://atlas.eia.gov" target="_blank" onclick="event.stopPropagation()">→ atlas.eia.gov ↗</a>
-              </div>
-
-              <div class="map-card" onclick="window.open('https://hifld-geoplatform.hub.arcgis.com/datasets/geoplatform::electric-substations/explore','_blank')">
-                <div class="map-card-header">
-                  <div class="map-card-name">HIFLD Electric Substations</div>
-                  <div class="map-card-badge">FREE · 政府开放数据</div>
-                </div>
-                <div class="map-card-desc">全美所有变电站的位置、电压等级、所有者。可按电压（345kV+）和州过滤，精确定位候选substation。</div>
-                <div class="map-card-shows">显示：<span>变电站位置 · Max/Min Voltage · Owner · State</span></div>
-                <a class="map-card-link" href="https://hifld-geoplatform.hub.arcgis.com/datasets/geoplatform::electric-substations/explore" target="_blank" onclick="event.stopPropagation()">→ HIFLD Substations ↗</a>
-              </div>
-
-              <div class="map-card" onclick="window.open('https://hifld-geoplatform.hub.arcgis.com/datasets/geoplatform::electric-power-transmission-lines/explore','_blank')">
-                <div class="map-card-header">
-                  <div class="map-card-name">HIFLD Transmission Lines</div>
-                  <div class="map-card-badge">FREE · 政府开放数据</div>
-                </div>
-                <div class="map-card-desc">全美高压输电线路的地理分布。过滤Voltage ≥ 345kV找主要输电走廊，定位高电力可靠性区域。</div>
-                <div class="map-card-shows">显示：<span>输电线电压 · 走廊路由 · Owner · 线路类型</span></div>
-                <a class="map-card-link" href="https://hifld-geoplatform.hub.arcgis.com/datasets/geoplatform::electric-power-transmission-lines/explore" target="_blank" onclick="event.stopPropagation()">→ HIFLD Transmission ↗</a>
-              </div>
-
-              <div class="map-card" onclick="window.open('https://www.ercot.com/gridmktinfo/transmission','_blank')">
-                <div class="map-card-header">
-                  <div class="map-card-name">ERCOT Transmission Maps</div>
-                  <div class="map-card-badge">FREE · Texas专属</div>
-                </div>
-                <div class="map-card-desc">ERCOT官方输电规划地图，最适合West Texas/Texas选址。可查看拥塞区域、计划中的新线路和substation扩容项目。</div>
-                <div class="map-card-shows">显示：<span>Texas grid · 拥塞节点 · 规划扩容项目</span></div>
-                <a class="map-card-link" href="https://www.ercot.com/gridmktinfo/transmission" target="_blank" onclick="event.stopPropagation()">→ ERCOT Grid Info ↗</a>
-              </div>
-
-              <div class="map-card" onclick="window.open('https://globalenergymonitor.org/projects/global-transmission-line-tracker/tracker-map/','_blank')">
-                <div class="map-card-header">
-                  <div class="map-card-name">Global Energy Monitor</div>
-                  <div class="map-card-badge">FREE · 全球</div>
-                </div>
-                <div class="map-card-desc">全球输电线路追踪器，包含规划中和在建项目。适合做multi-country选址比较，或了解竞争对手的基础设施布局。</div>
-                <div class="map-card-shows">显示：<span>全球输电线 · 在建 / 规划项目 · 国家对比</span></div>
-                <a class="map-card-link" href="https://globalenergymonitor.org/projects/global-transmission-line-tracker/tracker-map/" target="_blank" onclick="event.stopPropagation()">→ Global Transmission ↗</a>
-              </div>
-
-              <div class="map-card" onclick="window.open('https://msc.fema.gov/portal/home','_blank')">
-                <div class="map-card-header">
-                  <div class="map-card-name">FEMA Flood Map Service</div>
-                  <div class="map-card-badge">FREE · 风险筛查</div>
-                </div>
-                <div class="map-card-desc">在确定候选地块后必查。Flood Zone A/AE = 高洪水风险，应排除。West Texas多数区域属Zone X（低风险）。</div>
-                <div class="map-card-shows">显示：<span>洪水风险区 · Zone A/AE/X · 保险要求</span></div>
-                <a class="map-card-link" href="https://msc.fema.gov/portal/home" target="_blank" onclick="event.stopPropagation()">→ FEMA Flood Map ↗</a>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="note-display" id="note-display-step2" style="display:none"></div>
-        <div class="note-zone" id="note-step2">
-          <textarea id="note-input-step2" placeholder="Add your notes here…"></textarea>
-          <div class="note-actions">
-            <button class="note-save" onclick="saveNote('step2')">Save</button>
-            <button class="note-discard" onclick="toggleNote(null,'step2')">Cancel</button>
-            <span class="note-hint">Notes saved in this session</span>
-          </div>
-        </div>
-      </div>
+    <div class="grid2">
+      <div class="crit"><div class="crit-label a">⚡ Power Proximity</div><div class="crit-text">Within 2 miles of a 345kV+ substation with confirmed capacity headroom. Informal capacity check before executing LOI. Each mile of line extension adds $1–3M in upgrade cost.</div></div>
+      <div class="crit"><div class="crit-label b">🔌 Transmission Access</div><div class="crit-text">Adjacent to a major transmission corridor. Line extensions &gt;5 miles are often prohibitively expensive ($5–15M+) and add 12–18 months to the interconnection timeline.</div></div>
+      <div class="crit"><div class="crit-label g">🌐 Fiber Redundancy</div><div class="crit-text">Minimum 2 diverse carrier routes (Zayo, Lumen, Crown Castle). Single-carrier exposure is a non-starter for hyperscaler SLAs. Check distance to nearest carrier POPs.</div></div>
+      <div class="crit"><div class="crit-label r">🌊 Flood / Geotechnical</div><div class="crit-text">FEMA Zone X required. Avoid Zone A or AE. Also screen for seismic risk (western US) and subsidence (Gulf Coast). Geotech report is a Day 30 deliverable.</div></div>
     </div>
 
-    <!-- PHASE 2 -->
-    <div class="phase-group">
-      <div class="phase-label" style="color:var(--amber)">Phase 2 · Power Infrastructure</div>
-
-      <!-- STEP 3 — EXPANDED INTERCONNECTION DETAIL -->
-      <div class="step-card" id="card-step3" data-search-text="power study interconnection queue ercot miso pjm generator utility transmission capacity grid stability substation 3 7 years approved capacity bottleneck">
-        <div class="step-header" onclick="toggleStep('step3')">
-          <div class="step-num" style="background:var(--amber)">3</div>
-          <div class="step-info">
-            <div class="step-title">Power Study / Interconnection <span style="font-size:10px;background:rgba(248,113,113,0.15);color:var(--red);padding:2px 7px;border-radius:8px;font-weight:600;margin-left:6px">⚠ 最大瓶颈</span></div>
-            <div class="step-sub">排队 3–7 年 · Approved power = 核心资产</div>
-          </div>
-          <div class="step-actions">
-            <button class="action-btn" title="Highlight" onclick="toggleHighlight(event,'step3')">⭐</button>
-            <button class="action-btn" title="Add note" onclick="toggleNote(event,'step3')">✏️</button>
-          </div>
-          <div class="chevron">›</div>
-        </div>
-        <div class="step-body" id="body-step3">
-          <p class="detail-text">
-            ERCOT / utility 会开始研究 transmission capacity 够吗，grid stability 会受影响吗，是否需要新 substation，是否需要升级 transmission lines。<br><br>
-            <strong>关键洞察：</strong>谁有 approved power & interconnection，谁就值钱。Galaxy 已有 ERCOT approved capacity + substation & transmission access，这是真正的护城河——新进入者今天入场最快也要等 3–7 年。
-          </p>
-
-          <!-- INTERCONNECTION QUEUE STAGES -->
-          <div class="queue-viz">
-            <h4>Interconnection Queue：你的申请在哪一步？</h4>
-            <div class="queue-stages">
-              <div class="queue-stage">
-                <div class="q-dot" style="background:rgba(59,130,246,0.2);color:var(--blue)">1</div>
-                <div class="q-name">Application</div>
-                <div class="q-time">提交申请</div>
-              </div>
-              <div class="queue-stage">
-                <div class="q-dot" style="background:rgba(59,130,246,0.2);color:var(--blue)">2</div>
-                <div class="q-name">Feasibility Study</div>
-                <div class="q-time">~6–12 mo</div>
-              </div>
-              <div class="queue-stage">
-                <div class="q-dot" style="background:rgba(245,158,11,0.2);color:var(--amber)">3</div>
-                <div class="q-name">System Impact Study</div>
-                <div class="q-time">~12–24 mo</div>
-              </div>
-              <div class="queue-stage">
-                <div class="q-dot" style="background:rgba(245,158,11,0.2);color:var(--amber)">4</div>
-                <div class="q-name">Facilities Study</div>
-                <div class="q-time">~12–18 mo</div>
-              </div>
-              <div class="queue-stage">
-                <div class="q-dot" style="background:rgba(248,113,113,0.2);color:var(--red)">5</div>
-                <div class="q-name">IA Negotiation</div>
-                <div class="q-time">~6–12 mo</div>
-              </div>
-              <div class="queue-stage">
-                <div class="q-dot" style="background:rgba(34,197,94,0.2);color:var(--green)">✓</div>
-                <div class="q-name">Commercial Op</div>
-                <div class="q-time">Total: 3–7 yr</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- ISO COMPARISON -->
-          <div class="iso-cards">
-            <div class="iso-card" style="border-color:var(--green)">
-              <div class="iso-name" style="color:var(--green)">ERCOT</div>
-              <div class="iso-region">West Texas · Deregulated</div>
-              <div class="iso-stat">最快路径。市场去管制化，capacity queue较短。Galaxy在此已有approved power。</div>
-            </div>
-            <div class="iso-card" style="border-color:var(--amber)">
-              <div class="iso-name" style="color:var(--amber)">MISO</div>
-              <div class="iso-region">Midwest · Regulated</div>
-              <div class="iso-stat">中西部农业地区，风能丰富。Queue backlog严重，2022年改革后略有改善。</div>
-            </div>
-            <div class="iso-card" style="border-color:var(--blue)">
-              <div class="iso-name" style="color:var(--blue)">PJM</div>
-              <div class="iso-region">Mid-Atlantic · Regulated</div>
-              <div class="iso-stat">覆盖DC、VA、PA等数据中心密集区。Queue最长，通常需要5年以上。</div>
-            </div>
-          </div>
-
-          <div class="tag-row">
-            <span class="tag" style="color:var(--red);border-color:var(--red);background:rgba(248,113,113,0.1)">⚠ Withdraw rate 80%+：大量项目在队列中退出</span>
-            <span class="tag" style="color:var(--amber);border-color:var(--amber);background:rgba(245,158,11,0.1)">Galaxy已越过此关卡</span>
-          </div>
-        </div>
-        <div class="note-display" id="note-display-step3" style="display:none"></div>
-        <div class="note-zone" id="note-step3">
-          <textarea id="note-input-step3" placeholder="Add your notes here…"></textarea>
-          <div class="note-actions">
-            <button class="note-save" onclick="saveNote('step3')">Save</button>
-            <button class="note-discard" onclick="toggleNote(null,'step3')">Cancel</button>
-            <span class="note-hint">Notes saved in this session</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- STEP 4 -->
-      <div class="step-card" id="card-step4" data-search-text="permitting zoning environmental water construction utility approval permits timeline">
-        <div class="step-header" onclick="toggleStep('step4')">
-          <div class="step-num" style="background:var(--amber)">4</div>
-          <div class="step-info">
-            <div class="step-title">Permitting</div>
-            <div class="step-sub">Zoning · Environmental · Water · Construction · Utility</div>
-          </div>
-          <div class="step-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'step4')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'step4')">✏️</button>
-          </div>
-          <div class="chevron">›</div>
-        </div>
-        <div class="step-body" id="body-step4">
-          <p class="detail-text">五类许可证并行推进，每一类都有独立的审批机构和时间线。ERCOT区域比东北/加州显著快。</p>
-          <div class="criteria-grid">
-            <div class="criteria-card" style="border-color:var(--amber)">
-              <div class="crit-title" style="color:var(--amber)">🏙 Zoning</div>
-              <div class="crit-body">土地用途是否允许数据中心？如需rezoning，县政府公听会流程可能需要6–18个月。</div>
-            </div>
-            <div class="criteria-card" style="border-color:var(--green)">
-              <div class="crit-title" style="color:var(--green)">🌿 Environmental</div>
-              <div class="crit-body">影响范围大则触发NEPA审查（联邦级），可能需要Environmental Impact Statement（EIS），耗时2–3年。</div>
-            </div>
-            <div class="criteria-card" style="border-color:var(--blue)">
-              <div class="crit-title" style="color:var(--blue)">💧 Water Permits</div>
-              <div class="crit-body">水冷系统用水量巨大，需要水权（water rights）。West Texas水资源紧张，需提前规划或考虑风冷方案。</div>
-            </div>
-            <div class="criteria-card" style="border-color:var(--purple)">
-              <div class="crit-title" style="color:var(--purple)">🏗 Construction + Utility</div>
-              <div class="crit-body">建设许可证、消防安全审查、以及utility正式接入审批（grid connection agreement）。</div>
-            </div>
-          </div>
-        </div>
-        <div class="note-display" id="note-display-step4" style="display:none"></div>
-        <div class="note-zone" id="note-step4">
-          <textarea id="note-input-step4" placeholder="Add your notes here…"></textarea>
-          <div class="note-actions">
-            <button class="note-save" onclick="saveNote('step4')">Save</button>
-            <button class="note-discard" onclick="toggleNote(null,'step4')">Cancel</button>
-          </div>
-        </div>
-      </div>
+    <hr class="divider">
+    <h4>🗺 Infrastructure Map Resources</h4>
+    <p style="margin-bottom:10px">Use these tools to visually screen candidate sites against real grid and infrastructure data:</p>
+    <div class="map-grid">
+      <a class="map-card" href="https://atlas.eia.gov/datasets/eia::power-plants/explore" target="_blank" rel="noopener">
+        <div class="mc-eyebrow">EIA Energy Atlas</div>
+        <div class="mc-title">National Power &amp; Transmission Overview</div>
+        <div class="mc-desc">Start here. Macro view of plants, pipelines, and transmission corridors. Identifies viable regions before drilling down.</div>
+      </a>
+      <a class="map-card" href="https://hifld-geoplatform.opendata.arcgis.com/datasets/electric-substations" target="_blank" rel="noopener">
+        <div class="mc-eyebrow">HIFLD Open Data</div>
+        <div class="mc-title">Electric Substations (345kV+)</div>
+        <div class="mc-desc">Filter by voltage class. Cross-reference with land availability (CoStar, LoopNet) within a 3-mile radius buffer.</div>
+      </a>
+      <a class="map-card" href="https://hifld-geoplatform.opendata.arcgis.com/datasets/electric-power-transmission-lines" target="_blank" rel="noopener">
+        <div class="mc-eyebrow">HIFLD Open Data</div>
+        <div class="mc-title">High-Voltage Transmission Lines</div>
+        <div class="mc-desc">Map 345kV+ line corridors. Parcels adjacent to existing corridors avoid the bulk of extension costs.</div>
+      </a>
+      <a class="map-card" href="https://www.ercot.com/gridinfo/planning" target="_blank" rel="noopener">
+        <div class="mc-eyebrow">ERCOT Grid Planning</div>
+        <div class="mc-title">West Texas Grid &amp; Interconnect Queue</div>
+        <div class="mc-desc">ERCOT-specific planning maps, new generation queue, and load forecasts. Essential for Texas site screening.</div>
+      </a>
+      <a class="map-card" href="https://msc.fema.gov/portal/home" target="_blank" rel="noopener">
+        <div class="mc-eyebrow">FEMA Map Service Center</div>
+        <div class="mc-title">Flood Zone Risk Screening</div>
+        <div class="mc-desc">Confirm Zone X (minimal hazard). Eliminate Zone A/AE sites immediately — insurance and permitting kill returns.</div>
+      </a>
+      <a class="map-card" href="https://globalenergymonitor.org/projects/global-power-plant-database/" target="_blank" rel="noopener">
+        <div class="mc-eyebrow">Global Energy Monitor</div>
+        <div class="mc-title">International Grid Benchmarking</div>
+        <div class="mc-desc">Compare US grid density with EU, SE Asia markets. Context for cross-border development and renewable PPAs.</div>
+      </a>
     </div>
 
-    <!-- PHASE 3 -->
-    <div class="phase-group">
-      <div class="phase-label" style="color:var(--blue)">Phase 3 · Construction</div>
+    <hr class="divider">
+    <h4>Step-by-Step Site Screening Workflow</h4>
+    <div class="fsteps">
+      <div class="fstep"><div><div class="fstep-title">Regional Screening</div><div class="fstep-desc">Open EIA Atlas → identify states with high transmission density + renewable generation. Filter to ERCOT, PJM West, or MISO. Shortlist 3–5 metro areas.</div></div></div>
+      <div class="fstep"><div><div class="fstep-title">Locate Substations</div><div class="fstep-desc">HIFLD Substations → filter 345kV+ → buffer 3 miles → cross-reference land databases. Look for 50–500 acre industrial parcels with clear title.</div></div></div>
+      <div class="fstep"><div><div class="fstep-title">Cross-Validate Land</div><div class="fstep-desc">Shortlist 5–10 parcels overlapping the substation buffer → verify size, zoning, ownership, and prior environmental issues (Phase I ESA).</div></div></div>
+      <div class="fstep"><div><div class="fstep-title">Informal Capacity Check</div><div class="fstep-desc">Call utility interconnection group (not sales) to get informal read on substation headroom. This is free and typically takes 1–2 weeks. Do before LOI.</div></div></div>
+      <div class="fstep"><div><div class="fstep-title">Confirm Fiber &amp; Flood</div><div class="fstep-desc">Run fiber carrier check (Zayo, Lumen, Crown Castle) + pull FEMA flood map. Both must be clean before executing LOI and committing capital.</div></div></div>
+    </div>
+    <div class="note-section">
+      <div class="note-toggle" onclick="toggleNote('n2')">✏ Notes</div>
+      <div class="note-wrap" id="n2"><textarea class="note-ta" id="nt2" placeholder="Your notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('2')">Save</button><button class="note-cancel" onclick="toggleNote('n2')">Cancel</button></div><div class="note-display" id="nd2"></div></div>
+    </div>
+  </div></div>
+</div>
 
-      <!-- STEPS 5-8 -->
-      <div class="step-card" id="card-step5" data-search-text="design engineering power distribution cooling generators UPS networking battery backup transformers infrastructure">
-        <div class="step-header" onclick="toggleStep('step5')">
-          <div class="step-num" style="background:var(--blue)">5</div>
-          <div class="step-info">
-            <div class="step-title">Design &amp; Engineering</div>
-            <div class="step-sub">Power distribution · Cooling · UPS · Networking</div>
-          </div>
-          <div class="step-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'step5')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'step5')">✏️</button>
-          </div>
-          <div class="chevron">›</div>
-        </div>
-        <div class="step-body" id="body-step5">
-          <p class="detail-text">
-            Infrastructure包括：power distribution（transformers, switchgear, PDUs）、backup generators、cooling systems（水冷/液冷/风冷）、networking（fiber runs, optical switches）、battery backup、UPS systems。<br><br>
-            <strong>UPS工作原理：</strong>Grid fails → UPS instant backup（毫秒级）→ Generators启动（30–60秒）→ 系统恢复正常供电。<br><br>
-            <strong>GPU升级带来的挑战：</strong>每一代GPU功耗更高（H100→B100→B200持续上升），导致cooling和power infrastructure需要预留升级弹性——liquid cooling越来越成为标配。
-          </p>
-        </div>
-        <div class="note-display" id="note-display-step5" style="display:none"></div>
-        <div class="note-zone" id="note-step5">
-          <textarea id="note-input-step5" placeholder="Add your notes here…"></textarea>
-          <div class="note-actions">
-            <button class="note-save" onclick="saveNote('step5')">Save</button>
-            <button class="note-discard" onclick="toggleNote(null,'step5')">Cancel</button>
-          </div>
-        </div>
-      </div>
+<!-- STEP 3 -->
+<div class="step phase1" id="s3" data-kw="power study interconnection queue utility grid wait years bottleneck feasibility study impact">
+  <div class="step-header" onclick="toggle('s3')">
+    <span class="step-num">03</span>
+    <div class="step-meta">
+      <div class="step-title">Power Study &amp; Grid Interconnection</div>
+      <div class="step-sub">The most underestimated step — this is where timelines die</div>
+    </div>
+    <div class="step-right">
+      <button class="star-btn" onclick="star(event,'s3')" title="Star">⭐</button>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+  <div class="step-body"><div class="step-body-inner">
+    <div class="stat-block">
+      <div class="stat-num">3–7</div>
+      <div class="stat-label">years average wait for utility<br>interconnection in most US markets<br><strong style="color:var(--text-2)">ERCOT: 18–36 months (faster)</strong></div>
+    </div>
+    <p>The interconnection queue is the defining bottleneck of the entire AI infrastructure buildout. Utilities must complete a multi-stage study process before committing capacity — and this cannot be compressed or accelerated by capital alone.</p>
+    <div class="info-table">
+      <div class="ir"><span class="ir-k">Stage 1</span><span class="ir-v"><strong>Feasibility Study</strong> — rough screen of technical viability. ~6 months, $50K–$200K deposit.</span></div>
+      <div class="ir"><span class="ir-k">Stage 2</span><span class="ir-v"><strong>System Impact Study</strong> — detailed analysis of grid impact at your requested load. 6–12 months, $100K–$500K.</span></div>
+      <div class="ir"><span class="ir-k">Stage 3</span><span class="ir-v"><strong>Facilities Study</strong> — engineering plan for upgrades required. 6–18 months. Developer pays all upgrade costs.</span></div>
+      <div class="ir"><span class="ir-k">Stage 4</span><span class="ir-v"><strong>Interconnection Agreement</strong> — signed contract with utility locking in capacity, voltage, and timeline.</span></div>
+      <div class="ir"><span class="ir-k">Upgrade Cost</span><span class="ir-v">$2M–$50M+ in utility-required network upgrades, borne by the developer</span></div>
+      <div class="ir"><span class="ir-k">Queue Depth</span><span class="ir-v">PJM interconnection queue hit 3,000+ requests in 2024; most wait 5–7 years. ERCOT ~18–36 months with self-interconnect path.</span></div>
+    </div>
+    <div class="warn">
+      <div class="warn-title">⚠ Critical Action Item</div>
+      <div class="warn-body">File interconnection applications on Day 1 of site control. Every day you wait is a day added to the back of the queue. Queue position cannot be purchased — only earned by filing first.</div>
+    </div>
+    <div class="tags">
+      <span class="tag r">Critical Bottleneck</span>
+      <span class="tag a">File Immediately</span>
+      <span class="tag b">ERCOT Faster</span>
+    </div>
+    <div class="note-section">
+      <div class="note-toggle" onclick="toggleNote('n3')">✏ Notes</div>
+      <div class="note-wrap" id="n3"><textarea class="note-ta" id="nt3" placeholder="Your notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('3')">Save</button><button class="note-cancel" onclick="toggleNote('n3')">Cancel</button></div><div class="note-display" id="nd3"></div></div>
+    </div>
+  </div></div>
+</div>
 
-      <div class="step-card" id="card-step6" data-search-text="pre-leasing customer acquisition LOI PPA DSA committed MW revenue coreweave hyperscale colocation">
-        <div class="step-header" onclick="toggleStep('step6')">
-          <div class="step-num" style="background:var(--blue)">6</div>
-          <div class="step-info">
-            <div class="step-title">Pre-leasing / Customer Acquisition</div>
-            <div class="step-sub">LOIs · PPAs · DSAs · Committed MW</div>
-          </div>
-          <div class="step-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'step6')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'step6')">✏️</button>
-          </div>
-          <div class="chevron">›</div>
-        </div>
-        <div class="step-body" id="body-step6">
-          <p class="detail-text">
-            在开工前锁定客户，是datacenter项目可融资的前提条件。<br><br>
-            <strong>Revenue = Committed MW × $/MW</strong> + 少量maintenance（facility ops, repairs, staffing, security）<br><br>
-            核心文件：<strong>LOI</strong>（意向书，早期承诺谈判）/ <strong>PPA</strong>（电力采购协议，锁定电价）/ <strong>DSA</strong>（数据中心服务协议，核心长期合同，是融资的anchor document）<br><br>
-            Sale-leaseback也是常见结构：hyperscale客户（如CoreWeave）购买土地并租回，改善开发商资本效率。
-          </p>
-        </div>
-        <div class="note-display" id="note-display-step6" style="display:none"></div>
-        <div class="note-zone" id="note-step6">
-          <textarea id="note-input-step6" placeholder="Add your notes here…"></textarea>
-          <div class="note-actions">
-            <button class="note-save" onclick="saveNote('step6')">Save</button>
-            <button class="note-discard" onclick="toggleNote(null,'step6')">Cancel</button>
-          </div>
-        </div>
-      </div>
+<!-- ══════════════════════════════════
+  PHASE 2 — PERMITTING
+══════════════════════════════════ -->
+<div class="phase-header">
+  <span class="phase-badge p2">Phase 2</span>
+  <span class="phase-name">Permitting &amp; Regulatory Approvals</span>
+  <div class="phase-line"></div>
+</div>
 
-      <div class="step-card" id="card-step7" data-search-text="financing ROIC IRR yield on cost capex EBITDA equity debt project finance sale leaseback">
-        <div class="step-header" onclick="toggleStep('step7')">
-          <div class="step-num" style="background:var(--blue)">7</div>
-          <div class="step-info">
-            <div class="step-title">Financing</div>
-            <div class="step-sub">ROIC · Levered IRR · Yield on Cost</div>
-          </div>
-          <div class="step-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'step7')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'step7')">✏️</button>
-          </div>
-          <div class="chevron">›</div>
-        </div>
-        <div class="step-body" id="body-step7">
-          <p class="detail-text">
-            真正equity return要看的是 <strong>ROIC / Levered IRR</strong>。<br>
-            <strong>Stabilized Yield on Cost</strong> = 年化EBITDA ÷ 总开发Capex（建设阶段快速评估指标）。<br><br>
-            Hyperscale场景典型目标：Levered IRR 10–15%，Yield on Cost 8–12%。融资结构通常包含project finance债务 + equity注入 + 潜在的sale-leaseback安排。
-          </p>
-        </div>
-        <div class="note-display" id="note-display-step7" style="display:none"></div>
-        <div class="note-zone" id="note-step7">
-          <textarea id="note-input-step7" placeholder="Add your notes here…"></textarea>
-          <div class="note-actions">
-            <button class="note-save" onclick="saveNote('step7')">Save</button>
-            <button class="note-discard" onclick="toggleNote(null,'step7')">Cancel</button>
-          </div>
-        </div>
-      </div>
+<!-- STEP 4 -->
+<div class="step phase2" id="s4" data-kw="permit zoning building environmental conditional use approval nepa water fire safety">
+  <div class="step-header" onclick="toggle('s4')">
+    <span class="step-num">04</span>
+    <div class="step-meta">
+      <div class="step-title">Permitting &amp; Regulatory Approvals</div>
+      <div class="step-sub">Five permit categories — all must close before breaking ground</div>
+    </div>
+    <div class="step-right">
+      <button class="star-btn" onclick="star(event,'s4')" title="Star">⭐</button>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+  <div class="step-body"><div class="step-body-inner">
+    <p>Permitting runs in parallel with interconnection but rarely finishes faster. Community opposition and environmental review are the most common causes of slippage. Run all five tracks concurrently with separate workstreams.</p>
+    <div class="grid2">
+      <div class="crit"><div class="crit-label b">🏗 Conditional Use Permit</div><div class="crit-text">Local zoning board approval for industrial / data center use. Requires public hearings. Budget 6–18 months and hire a local land use attorney from Day 1.</div></div>
+      <div class="crit"><div class="crit-label g">🌿 Environmental Review</div><div class="crit-text">NEPA or state equivalent. Water discharge, noise, visual impact. Required for most ≥20 MW facilities. Engage consultants before filing — it cuts 30–40% off the timeline.</div></div>
+      <div class="crit"><div class="crit-label r">🔥 Fire &amp; Life Safety</div><div class="crit-text">Fire suppression design (pre-action or FM-200), emergency access roads, battery (BESS / UPS) storage permits. Early AHJ (Authority Having Jurisdiction) coordination is critical.</div></div>
+      <div class="crit"><div class="crit-label a">💧 Water &amp; Discharge</div><div class="crit-text">Cooling tower water draw and NPDES discharge permits. Air-cooled designs reduce exposure but add cost at scale. Water rights purchase may be required in western states.</div></div>
+    </div>
+    <div class="insight">
+      <div class="insight-title">💡 Interconnection Agreement</div>
+      <div class="insight-body">The signed interconnection agreement with the utility is the legal milestone that locks in your power. Treat this as a parallel permit track, not a Phase 3 task. Lenders require it before funding construction debt.</div>
+    </div>
+    <div class="info-table">
+      <div class="ir"><span class="ir-k">Fastest Timeline</span><span class="ir-v">Texas, Nevada: 6–12 months with experienced land use counsel</span></div>
+      <div class="ir"><span class="ir-k">Slowest Timeline</span><span class="ir-v">California, New York: 24–48 months common due to CEQA / SEQRA + local opposition</span></div>
+      <div class="ir"><span class="ir-k">Community Risk</span><span class="ir-v">Noise from cooling units and visual impact are top community objections — address proactively in CUP filings</span></div>
+    </div>
+    <div class="note-section">
+      <div class="note-toggle" onclick="toggleNote('n4')">✏ Notes</div>
+      <div class="note-wrap" id="n4"><textarea class="note-ta" id="nt4" placeholder="Your notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('4')">Save</button><button class="note-cancel" onclick="toggleNote('n4')">Cancel</button></div><div class="note-display" id="nd4"></div></div>
+    </div>
+  </div></div>
+</div>
 
-      <div class="step-card" id="card-step8" data-search-text="construction transformer shortage supply chain utility delays technician shortage meta CBRE fiber training bottleneck">
-        <div class="step-header" onclick="toggleStep('step8')">
-          <div class="step-num" style="background:var(--blue)">8</div>
-          <div class="step-info">
-            <div class="step-title">Construction <span style="font-size:10px;background:rgba(248,113,113,0.15);color:var(--red);padding:2px 7px;border-radius:8px;font-weight:600;margin-left:6px">⚠ 供应链瓶颈</span></div>
-            <div class="step-sub">Transformer shortage · Utility delays · Technician gap</div>
-          </div>
-          <div class="step-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'step8')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'step8')">✏️</button>
-          </div>
-          <div class="chevron">›</div>
-        </div>
-        <div class="step-body" id="body-step8">
-          <p class="detail-text">三大瓶颈当前同时存在：</p>
-          <div class="criteria-grid">
-            <div class="criteria-card" style="border-color:var(--red)">
-              <div class="crit-title" style="color:var(--red)">🔌 Transformer Shortage</div>
-              <div class="crit-body">大型变压器交货期已达18–24个月+，全行业争抢有限产能。这一个零件就能把整个项目推迟1–2年。</div>
-            </div>
-            <div class="criteria-card" style="border-color:var(--red)">
-              <div class="crit-title" style="color:var(--red)">⚡ Utility Delays</div>
-              <div class="crit-body">即使interconnection获批，utility还要物理建设grid接入——substations、transmission升级。施工队伍全行业排队。</div>
-            </div>
-            <div class="criteria-card" style="border-color:var(--amber)">
-              <div class="crit-title" style="color:var(--amber)">👷 Technician Shortage</div>
-              <div class="crit-body">光纤施工、电气、液冷技术工人严重短缺。Meta和CBRE已开始自建fiber technician培训项目以保证建设速度。</div>
-            </div>
-            <div class="criteria-card" style="border-color:var(--blue)">
-              <div class="crit-title" style="color:var(--blue)">📦 Supply Chain</div>
-              <div class="crit-body">UPS系统、精密空调、液冷设备、发电机组的交期也在延长。需提前12–18个月下单锁货。</div>
-            </div>
-          </div>
-        </div>
-        <div class="note-display" id="note-display-step8" style="display:none"></div>
-        <div class="note-zone" id="note-step8">
-          <textarea id="note-input-step8" placeholder="Add your notes here…"></textarea>
-          <div class="note-actions">
-            <button class="note-save" onclick="saveNote('step8')">Save</button>
-            <button class="note-discard" onclick="toggleNote(null,'step8')">Cancel</button>
-          </div>
-        </div>
-      </div>
+<!-- ══════════════════════════════════
+  PHASE 3 — DEVELOPMENT & FINANCING
+══════════════════════════════════ -->
+<div class="phase-header">
+  <span class="phase-badge p3">Phase 3</span>
+  <span class="phase-name">Development &amp; Financing</span>
+  <div class="phase-line"></div>
+</div>
+
+<!-- STEP 5 -->
+<div class="step phase3" id="s5" data-kw="design mep cooling redundancy tier mechanical electrical plumbing liquid cooling density pue">
+  <div class="step-header" onclick="toggle('s5')">
+    <span class="step-num">05</span>
+    <div class="step-meta">
+      <div class="step-title">Facility Design</div>
+      <div class="step-sub">MEP engineering, cooling architecture, and redundancy tiers for AI-density workloads</div>
+    </div>
+    <div class="step-right">
+      <button class="star-btn" onclick="star(event,'s5')" title="Star">⭐</button>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+  <div class="step-body"><div class="step-body-inner">
+    <p>AI workloads demand fundamentally different facility design than traditional enterprise data centers. GPU racks running 30–100kW require liquid cooling infrastructure, heavier structural floor loads, and distribution systems that air-cooled designs cannot support.</p>
+    <div class="grid2">
+      <div class="crit"><div class="crit-label a">⚡ Power Density</div><div class="crit-text">30–100 kW/rack for GPU clusters (vs. 5–10 kW traditional). Floor must handle 1,000–2,000 lbs/sq ft. Standard raised-floor tiles collapse under GPU server weight.</div></div>
+      <div class="crit"><div class="crit-label b">❄ Cooling Architecture</div><div class="crit-text">Direct Liquid Cooling (DLC) or rear-door heat exchangers required above 30 kW/rack. Air cooling alone is physically insufficient — plan chilled water loops and CDU manifolds from Day 1 of design.</div></div>
+      <div class="crit"><div class="crit-label g">🔁 Redundancy (Tier III)</div><div class="crit-text">2N power (dual utility feeds + generators), N+1 UPS, N+1 cooling for Tier III SLA (99.982% uptime). Hyperscalers require Tier III minimum; AI training clusters often accept Tier II for cost savings.</div></div>
+      <div class="crit"><div class="crit-label r">📐 PUE Target</div><div class="crit-text">Modern AI data centers target PUE 1.2–1.3 (vs. legacy 1.6–2.0). Every 0.1 PUE improvement = ~10% reduction in power cost at scale. Critical for competitiveness on GPU-as-a-Service economics.</div></div>
+    </div>
+    <div class="info-table">
+      <div class="ir"><span class="ir-k">Long-Lead: Transformers</span><span class="ir-v">Order at design completion — 52–104 week lead time (see Step 8)</span></div>
+      <div class="ir"><span class="ir-k">Long-Lead: Switchgear</span><span class="ir-v">12–18 months. Order simultaneously with transformers — one does not work without the other</span></div>
+      <div class="ir"><span class="ir-k">Architect Selection</span><span class="ir-v">Use firms with ≥3 hyperscale AI campus completions. Critical Path: Arcadis, DLR Group, HOK, Corgan</span></div>
+      <div class="ir"><span class="ir-k">Design Duration</span><span class="ir-v">Schematic → Design Development → Construction Documents: 12–18 months for a 100+ MW campus</span></div>
+    </div>
+    <div class="note-section">
+      <div class="note-toggle" onclick="toggleNote('n5')">✏ Notes</div>
+      <div class="note-wrap" id="n5"><textarea class="note-ta" id="nt5" placeholder="Your notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('5')">Save</button><button class="note-cancel" onclick="toggleNote('n5')">Cancel</button></div><div class="note-display" id="nd5"></div></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- STEP 6 -->
+<div class="step phase3" id="s6" data-kw="pre-leasing anchor tenant hyperscaler lease revenue mw pricing microsoft google amazon meta">
+  <div class="step-header" onclick="toggle('s6')">
+    <span class="step-num">06</span>
+    <div class="step-meta">
+      <div class="step-title">Pre-Leasing &amp; Anchor Tenant</div>
+      <div class="step-sub">Lock in contracted demand before construction begins — this de-risks everything</div>
+    </div>
+    <div class="step-right">
+      <button class="star-btn" onclick="star(event,'s6')" title="Star">⭐</button>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+  <div class="step-body"><div class="step-body-inner">
+    <p>Pre-leasing converts a speculative development into a contracted cashflow asset. Most institutional lenders require 50–70% pre-lease before funding construction debt. Hyperscalers (Microsoft, Google, Meta, Amazon) sign 10–20 year NNN take-or-pay leases — from a lender's perspective, a hyperscale lease is effectively a corporate bond with a building attached.</p>
+    <div class="formula-box">
+      Revenue = MW × ($/kW/month × 1,000) × 12<br>
+      <span>Example: 100 MW @ $130/kW/mo = <strong style="color:var(--green)">$156M ARR</strong></span>
+    </div>
+    <div class="info-table">
+      <div class="ir"><span class="ir-k">Hyperscale Lease Terms</span><span class="ir-v">10–20 year triple-net (NNN) take-or-pay, 2–3% annual escalators. Pay for committed power regardless of usage.</span></div>
+      <div class="ir"><span class="ir-k">Who Pays What (NNN)</span><span class="ir-v">Tenant pays base rent ($/kW) + proportional operating expenses (~$35/kW) + actual power consumption. Developer keeps base rent net of capex debt service.</span></div>
+      <div class="ir"><span class="ir-k">Tenant Mix (Typical)</span><span class="ir-v">Hyperscalers 60–70%, AI startups 15–20%, Enterprise 10–15%. Hyperscalers = best credit quality.</span></div>
+      <div class="ir"><span class="ir-k">Letter of Intent</span><span class="ir-v">LOI typically includes 12–18 month exclusivity for due diligence + design specification negotiation before binding lease</span></div>
+    </div>
+    <div class="tags">
+      <span class="tag b">Microsoft / Google / Meta / Amazon</span>
+      <span class="tag g">NNN Take-or-Pay</span>
+      <span class="tag a">10–20 Year Terms</span>
+    </div>
+    <div class="note-section">
+      <div class="note-toggle" onclick="toggleNote('n6')">✏ Notes</div>
+      <div class="note-wrap" id="n6"><textarea class="note-ta" id="nt6" placeholder="Your notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('6')">Save</button><button class="note-cancel" onclick="toggleNote('n6')">Cancel</button></div><div class="note-display" id="nd6"></div></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- STEP 7 -->
+<div class="step phase3" id="s7" data-kw="financing roic irr debt equity capital stack return investment lender construction loan REIT">
+  <div class="step-header" onclick="toggle('s7')">
+    <span class="step-num">07</span>
+    <div class="step-meta">
+      <div class="step-title">Financing &amp; Capital Stack</div>
+      <div class="step-sub">Construction debt, equity returns, and the ROIC math that drives investment decisions</div>
+    </div>
+    <div class="step-right">
+      <button class="star-btn" onclick="star(event,'s7')" title="Star">⭐</button>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+  <div class="step-body"><div class="step-body-inner">
+    <p>Data center development is capital-intensive but highly financeable once pre-leasing is in place. The asset class now trades like infrastructure — lenders underwrite it similarly to utility assets, with long contracted cashflows and investment-grade tenants.</p>
+    <div class="info-table">
+      <div class="ir"><span class="ir-k">Development Cost</span><span class="ir-v">$8–$14M per MW all-in (land, shell, MEP, electrical gear). AI-density campuses trend toward $12–14M/MW due to liquid cooling and higher electrical specification.</span></div>
+      <div class="ir"><span class="ir-k">Construction Debt LTV</span><span class="ir-v">50–65% on pre-leased assets. Lenders require: (a) executed leases, (b) signed interconnection agreement, (c) full permit set</span></div>
+      <div class="ir"><span class="ir-k">Target Unlevered ROIC</span><span class="ir-v">12–18% on stabilized campuses</span></div>
+      <div class="ir"><span class="ir-k">Target Levered IRR</span><span class="ir-v">18–25% equity IRR over 5–7 year hold (developer)</span></div>
+      <div class="ir"><span class="ir-k">Cap Rate (Exit)</span><span class="ir-v">4.5–5.5% for hyperscale-leased assets (Equinix, Digital Realty public comps). Cap rate compression has been extreme — 7% in 2018, 5% in 2023, sub-5% in 2025.</span></div>
+      <div class="ir"><span class="ir-k">ABS / Securitization</span><span class="ir-v">By mid-2025, data center ABS issuance exceeded $48B across 88 transactions — deepest financing market in asset class history</span></div>
+    </div>
+    <div class="tags">
+      <span class="tag g">REIT / Infrastructure Fund</span>
+      <span class="tag b">ABS / Securitization</span>
+      <span class="tag a">Construction Loan → Perm Debt</span>
+    </div>
+    <div class="note-section">
+      <div class="note-toggle" onclick="toggleNote('n7')">✏ Notes</div>
+      <div class="note-wrap" id="n7"><textarea class="note-ta" id="nt7" placeholder="Your notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('7')">Save</button><button class="note-cancel" onclick="toggleNote('n7')">Cancel</button></div><div class="note-display" id="nd7"></div></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- STEP 8 -->
+<div class="step phase3" id="s8" data-kw="construction supply chain transformer generator switchgear lead time bottleneck procurement">
+  <div class="step-header" onclick="toggle('s8')">
+    <span class="step-num">08</span>
+    <div class="step-meta">
+      <div class="step-title">Construction &amp; Supply Chain</div>
+      <div class="step-sub">Three equipment bottlenecks that will delay your schedule if not ordered at design, not at groundbreaking</div>
+    </div>
+    <div class="step-right">
+      <button class="star-btn" onclick="star(event,'s8')" title="Star">⭐</button>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+  <div class="step-body"><div class="step-body-inner">
+    <p>Construction itself is not the constraint — it's the electrical equipment. The global supply chain for power transformers, switchgear, and generators is under unprecedented stress from simultaneous demand by EV infrastructure, grid hardening, renewables, and AI data centers.</p>
+
+    <div class="warn">
+      <div class="warn-title">⚠ Bottleneck 1 — Power Transformers</div>
+      <div class="warn-body"><strong>2-year lead time (52–104 weeks).</strong> ABB, Siemens, GE transformer backlogs now extend beyond 104 weeks for large units. Order at or before design completion — ordering at groundbreaking is already too late by 12+ months.</div>
+    </div>
+    <div class="warn">
+      <div class="warn-title">⚠ Bottleneck 2 — Main Switchgear &amp; PDUs</div>
+      <div class="warn-body"><strong>12–18 month lead time.</strong> Medium-voltage switchgear (15kV class) and high-density power distribution units are constrained. Eaton, Schneider Electric, and ABB all report extended backlogs. Standardize specs early to allow substitution between manufacturers.</div>
+    </div>
+    <div class="warn">
+      <div class="warn-title">⚠ Bottleneck 3 — Backup Generators</div>
+      <div class="warn-body"><strong>9–15 month lead time.</strong> Large diesel generators (2MW+) for N+1 critical backup are delayed by engine block and alternator shortages. Caterpillar and Cummins are prioritizing fleet customers. Consider natural gas alternatives where available.</div>
     </div>
 
-    <!-- PHASE 4 -->
-    <div class="phase-group">
-      <div class="phase-label" style="color:var(--purple)">Phase 4 · Operations</div>
-
-      <div class="step-card" id="card-step9" data-search-text="energization power on grid connection live operational asset value refinancing revenue">
-        <div class="step-header" onclick="toggleStep('step9')">
-          <div class="step-num" style="background:var(--purple)">9</div>
-          <div class="step-info">
-            <div class="step-title">Power Energization</div>
-            <div class="step-sub">通电 · Grid connection live · Asset valuation shifts</div>
-          </div>
-          <div class="step-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'step9')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'step9')">✏️</button>
-          </div>
-          <div class="chevron">›</div>
-        </div>
-        <div class="step-body" id="body-step9">
-          <p class="detail-text">
-            正式完成grid接入，数据中心获得可用电力。这一时刻标志着资产从"在建"转为"可运营"，直接影响资产估值和融资条件：可以从建设期高成本债务切换到更低成本的permanent financing。<br><br>
-            Time-to-energization是整个商业模式中最关键的单一变量——每推迟一个月，都是直接的收入损失。
-          </p>
-        </div>
-        <div class="note-display" id="note-display-step9" style="display:none"></div>
-        <div class="note-zone" id="note-step9">
-          <textarea id="note-input-step9" placeholder="Add your notes here…"></textarea>
-          <div class="note-actions">
-            <button class="note-save" onclick="saveNote('step9')">Save</button>
-            <button class="note-discard" onclick="toggleNote(null,'step9')">Cancel</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="step-card" id="card-step10" data-search-text="install IT equipment GPU HBM optical networking storage racks coreweave nvidia CoWoS TSMC lumentum maxlinear">
-        <div class="step-header" onclick="toggleStep('step10')">
-          <div class="step-num" style="background:var(--purple)">10</div>
-          <div class="step-info">
-            <div class="step-title">Install IT Equipment</div>
-            <div class="step-sub">GPUs · HBM · Optical Networking · Storage</div>
-          </div>
-          <div class="step-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'step10')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'step10')">✏️</button>
-          </div>
-          <div class="chevron">›</div>
-        </div>
-        <div class="step-body" id="body-step10">
-          <p class="detail-text">
-            客户（如CoreWeave）开始部署：NVIDIA GPUs（H100/B100/B200系列）、HBM（High Bandwidth Memory，防止GPU idle，由Micron/SK Hynix/Samsung提供）、光纤networking（GPU间通信依赖optical networking——铜线在大规模cluster下有bandwidth和heat generation限制）、storage（latency和bandwidth要求相对低）。<br><br>
-            <strong>TSMC CoWoS技术：</strong>把GPU die + HBM stack + interposer + substrate整合成一个超级package，实现GPU超高速读取HBM，low latency, high bandwidth。
-          </p>
-        </div>
-        <div class="note-display" id="note-display-step10" style="display:none"></div>
-        <div class="note-zone" id="note-step10">
-          <textarea id="note-input-step10" placeholder="Add your notes here…"></textarea>
-          <div class="note-actions">
-            <button class="note-save" onclick="saveNote('step10')">Save</button>
-            <button class="note-discard" onclick="toggleNote(null,'step10')">Cancel</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="step-card" id="card-step11" data-search-text="commissioning testing handover power cooling networking security UPS generator failover revenue begins">
-        <div class="step-header" onclick="toggleStep('step11')">
-          <div class="step-num" style="background:var(--purple)">11</div>
-          <div class="step-info">
-            <div class="step-title">Commissioning ✓</div>
-            <div class="step-sub">Testing · Handover · Revenue begins</div>
-          </div>
-          <div class="step-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'step11')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'step11')">✏️</button>
-          </div>
-          <div class="chevron">›</div>
-        </div>
-        <div class="step-body" id="body-step11">
-          <p class="detail-text">
-            全面测试所有系统后正式移交客户。测试项目包括：power系统load test、冷却系统热性能验证、networking端到端测试、UPS和generator failover实际故障演练。<br><br>
-            Commissioning完成 = 资产进入Stabilized运营阶段，可计算最终Yield on Cost和实际IRR。这是investment thesis被验证的时刻。
-          </p>
-        </div>
-        <div class="note-display" id="note-display-step11" style="display:none"></div>
-        <div class="note-zone" id="note-step11">
-          <textarea id="note-input-step11" placeholder="Add your notes here…"></textarea>
-          <div class="note-actions">
-            <button class="note-save" onclick="saveNote('step11')">Save</button>
-            <button class="note-discard" onclick="toggleNote(null,'step11')">Cancel</button>
-          </div>
-        </div>
-      </div>
+    <div class="info-table">
+      <div class="ir"><span class="ir-k">Civil / Shell</span><span class="ir-v">12–18 months from groundbreaking for shell and core</span></div>
+      <div class="ir"><span class="ir-k">MEP Fit-Out</span><span class="ir-v">6–12 months after shell completion</span></div>
+      <div class="ir"><span class="ir-k">Total (Ground → CO)</span><span class="ir-v">24–36 months typical for a 20–50 MW first phase — if equipment was ordered on time</span></div>
+      <div class="ir"><span class="ir-k">GC Selection</span><span class="ir-v">Turner, Mortenson, DPR, Holder — all have dedicated data center practices. Require ≥3 hyperscale data center completions in last 5 years.</span></div>
     </div>
-  </div><!-- /panel-roadmap -->
+    <div class="note-section">
+      <div class="note-toggle" onclick="toggleNote('n8')">✏ Notes</div>
+      <div class="note-wrap" id="n8"><textarea class="note-ta" id="nt8" placeholder="Your notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('8')">Save</button><button class="note-cancel" onclick="toggleNote('n8')">Cancel</button></div><div class="note-display" id="nd8"></div></div>
+    </div>
+  </div></div>
+</div>
 
-  <!-- ═══════════════════════════════════════════════════════
-       PANEL 2 · AI STACK
-  ═══════════════════════════════════════════════════════ -->
-  <div class="panel" id="panel-stack">
+<!-- ══════════════════════════════════
+  PHASE 4 — ENERGIZATION & IT
+══════════════════════════════════ -->
+<div class="phase-header">
+  <span class="phase-badge p4">Phase 4</span>
+  <span class="phase-name">Energization &amp; IT Deployment</span>
+  <div class="phase-line"></div>
+</div>
+
+<!-- STEP 9 -->
+<div class="step phase4" id="s9" data-kw="energization utility commissioning power on milestone">
+  <div class="step-header" onclick="toggle('s9')">
+    <span class="step-num">09</span>
+    <div class="step-meta">
+      <div class="step-title">Energization</div>
+      <div class="step-sub">The utility throws the switch — every downstream milestone gates from this moment</div>
+    </div>
+    <div class="step-right">
+      <button class="star-btn" onclick="star(event,'s9')" title="Star">⭐</button>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+  <div class="step-body"><div class="step-body-inner">
+    <p>Energization is the moment the facility transitions from a building to a data center. The utility completes its construction, tests the interconnection, and delivers live power to the main switchgear. This milestone gates the entire downstream schedule for IT deployment.</p>
+    <div class="info-table">
+      <div class="ir"><span class="ir-k">Pre-Energization</span><span class="ir-v">Utility witness testing, metering calibration, protection relay coordination, final inspection</span></div>
+      <div class="ir"><span class="ir-k">Energization Day</span><span class="ir-v">Utility feeds live power to building for the first time. Critical path milestone — often a ceremony for institutional investors.</span></div>
+      <div class="ir"><span class="ir-k">Post-Energization</span><span class="ir-v">30–60 day burn-in: UPS load testing, generator transfer tests (monthly going forward), cooling validation under load</span></div>
+    </div>
+    <div class="tags">
+      <span class="tag g">The Lights Come On</span>
+      <span class="tag b">Gates IT Deployment</span>
+    </div>
+    <div class="note-section">
+      <div class="note-toggle" onclick="toggleNote('n9')">✏ Notes</div>
+      <div class="note-wrap" id="n9"><textarea class="note-ta" id="nt9" placeholder="Your notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('9')">Save</button><button class="note-cancel" onclick="toggleNote('n9')">Cancel</button></div><div class="note-display" id="nd9"></div></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- STEP 10 -->
+<div class="step phase4" id="s10" data-kw="IT GPU HBM CoWoS networking optical server AI chip hardware rack install NVIDIA H100 B200">
+  <div class="step-header" onclick="toggle('s10')">
+    <span class="step-num">10</span>
+    <div class="step-meta">
+      <div class="step-title">Install IT Infrastructure</div>
+      <div class="step-sub">GPU cluster deployment — the full AI hardware stack from silicon fab to fiber</div>
+    </div>
+    <div class="step-right">
+      <button class="star-btn" onclick="star(event,'s10')" title="Star">⭐</button>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+  <div class="step-body"><div class="step-body-inner">
+    <p>Modern AI clusters are a tightly integrated stack of compute, memory packaging, optical networking, and precision liquid cooling. Each layer has its own supply chain and lead time — all must arrive and be staged in sequence. GPU allocation from NVIDIA is often the binding constraint.</p>
     <div class="stack">
-      <div class="stack-layer" id="card-l6" style="border-top:3px solid #fff" data-search-text="AI cloud applications coreweave aws azure gcp gpu rental inference training">
-        <div class="stack-header" onclick="toggleStack('l6')">
-          <div class="stack-icon">☁️</div>
-          <div class="stack-name" style="color:#fff">AI Applications &amp; Cloud</div>
-          <div class="stack-players">CoreWeave · AWS · Azure · GCP</div>
-          <div class="stack-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'l6')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'l6')">✏️</button>
-          </div>
-        </div>
-        <div class="stack-expand" id="body-l6">
-          <strong>CoreWeave</strong>是典型案例：GPU rental provider，提供GPU access + networking + orchestration + AI infra，按用量计费。GPU-first架构，针对AI training & inference优化了低延迟networking和高带宽GPU clusters。CoreWeave的存在正是为什么Galaxy的物理基础设施如此关键。
-        </div>
-        <div class="note-display" id="note-display-l6" style="display:none"></div>
-        <div class="note-zone" id="note-l6"><textarea id="note-input-l6" placeholder="Add notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('l6')">Save</button><button class="note-discard" onclick="toggleNote(null,'l6')">Cancel</button></div></div>
+      <div class="stack-layer" style="border-left:3px solid var(--green)">
+        <span class="sl-n">6</span><span class="sl-name">Optical Networking</span>
+        <span class="sl-desc">400G/800G transceivers, spine-leaf topology, InfiniBand NDR or RoCE v2 fabric for GPU-to-GPU communication within the cluster</span>
       </div>
-
-      <div class="stack-layer" id="card-l5" style="border-top:3px solid var(--green)" data-search-text="optical networking lumentum maxlinear GPU communication fiber transceivers lasers copper bandwidth">
-        <div class="stack-header" onclick="toggleStack('l5')">
-          <div class="stack-icon">🌐</div>
-          <div class="stack-name" style="color:var(--green)">Optical Networking</div>
-          <div class="stack-players">Lumentum · MaxLinear</div>
-          <div class="stack-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'l5')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'l5')">✏️</button>
-          </div>
-        </div>
-        <div class="stack-expand" id="body-l5">
-          GPU之间数据传输依赖光纤 + optical networking。铜线在短距离表现尚可，但随AI clusters规模扩大，铜线面临bandwidth限制、信号衰减、散热和能耗问题。<br><br>
-          <strong>Lumentum：</strong>optical transceivers, lasers, photonics components<br>
-          <strong>MaxLinear：</strong>networking chips<br><br>
-          光传输用光而非电信号，实现更高带宽、更低延迟、更远距离、更低能耗。
-        </div>
-        <div class="note-display" id="note-display-l5" style="display:none"></div>
-        <div class="note-zone" id="note-l5"><textarea id="note-input-l5" placeholder="Add notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('l5')">Save</button><button class="note-discard" onclick="toggleNote(null,'l5')">Cancel</button></div></div>
+      <div class="stack-layer" style="border-left:3px solid var(--blue)">
+        <span class="sl-n">5</span><span class="sl-name">Liquid Cooling</span>
+        <span class="sl-desc">Direct Liquid Cooling (DLC) manifolds, rear-door heat exchangers, Coolant Distribution Units (CDUs) — mandatory above 30 kW/rack</span>
       </div>
-
-      <div class="stack-layer" id="card-l4" style="border-top:3px solid var(--purple)" data-search-text="GPU NVIDIA H100 B100 B200 compute training inference power cooling">
-        <div class="stack-header" onclick="toggleStack('l4')">
-          <div class="stack-icon">🖥️</div>
-          <div class="stack-name" style="color:var(--purple)">GPU Compute</div>
-          <div class="stack-players">NVIDIA H100 / B100 / B200</div>
-          <div class="stack-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'l4')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'l4')">✏️</button>
-          </div>
-        </div>
-        <div class="stack-expand" id="body-l4">
-          GPU是AI训练和推理的核心算力单元。每一代GPU升级都带来更高功耗、更高散热需求（推动液冷升级）以及更高的HBM需求。<br><br>
-          GPU快速迭代意味着数据中心基础设施必须预留升级弹性——modular cooling、可扩展power capacity是设计时的关键考量。
-        </div>
-        <div class="note-display" id="note-display-l4" style="display:none"></div>
-        <div class="note-zone" id="note-l4"><textarea id="note-input-l4" placeholder="Add notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('l4')">Save</button><button class="note-discard" onclick="toggleNote(null,'l4')">Cancel</button></div></div>
+      <div class="stack-layer" style="border-left:3px solid var(--purple)">
+        <span class="sl-n">4</span><span class="sl-name">Server Nodes</span>
+        <span class="sl-desc">8× GPU compute nodes (H100 SXM5 / H200 / B200 / GB200 NVL72), NVLink switch boards, high-density 277V power shelves</span>
       </div>
-
-      <div class="stack-layer" id="card-l3" style="border-top:3px solid var(--blue)" data-search-text="CoWoS chip on wafer substrate TSMC packaging GPU HBM interposer bandwidth latency advanced packaging">
-        <div class="stack-header" onclick="toggleStack('l3')">
-          <div class="stack-icon">📦</div>
-          <div class="stack-name" style="color:var(--blue)">Advanced Packaging (CoWoS)</div>
-          <div class="stack-players">TSMC — GPU + HBM Integration</div>
-          <div class="stack-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'l3')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'l3')">✏️</button>
-          </div>
-        </div>
-        <div class="stack-expand" id="body-l3">
-          <strong>TSMC CoWoS（Chip-on-Wafer-on-Substrate）：</strong>把GPU die + HBM stack + interposer（超密集wiring，高bandwidth传输通道）+ substrate整合成一个超级package。<br><br>
-          效果：GPU可以超高速读取HBM，实现极低延迟和极高带宽——AI训练/推理的性能核心。CoWoS产能是AI算力的上游瓶颈之一。
-        </div>
-        <div class="note-display" id="note-display-l3" style="display:none"></div>
-        <div class="note-zone" id="note-l3"><textarea id="note-input-l3" placeholder="Add notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('l3')">Save</button><button class="note-discard" onclick="toggleNote(null,'l3')">Cancel</button></div></div>
+      <div class="stack-layer" style="border-left:3px solid var(--amber)">
+        <span class="sl-n">3</span><span class="sl-name">CoWoS / Advanced Packaging</span>
+        <span class="sl-desc">TSMC CoWoS-L/S integrates GPU die + HBM stacks on a single interposer. CoWoS capacity was the AI chip supply chain bottleneck in 2024–2025.</span>
       </div>
-
-      <div class="stack-layer" id="card-l2" style="border-top:3px solid var(--blue)" data-search-text="HBM high bandwidth memory micron SK hynix samsung GPU idle volatile short term storage">
-        <div class="stack-header" onclick="toggleStack('l2')">
-          <div class="stack-icon">💾</div>
-          <div class="stack-name" style="color:var(--blue)">HBM Memory</div>
-          <div class="stack-players">Micron · SK Hynix · Samsung</div>
-          <div class="stack-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'l2')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'l2')">✏️</button>
-          </div>
-        </div>
-        <div class="stack-expand" id="body-l2">
-          <strong>HBM（High Bandwidth Memory）：</strong>防止GPU idle的关键。相当于GPU的volatile短期内存，提供极高带宽。Storage（长期存储）对latency和bandwidth要求低得多，不是AI性能核心瓶颈。<br><br>
-          SK Hynix目前处于HBM市场领先地位，Micron正积极追赶。HBM产能是AI供应链的另一个上游制约因素。
-        </div>
-        <div class="note-display" id="note-display-l2" style="display:none"></div>
-        <div class="note-zone" id="note-l2"><textarea id="note-input-l2" placeholder="Add notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('l2')">Save</button><button class="note-discard" onclick="toggleNote(null,'l2')">Cancel</button></div></div>
+      <div class="stack-layer" style="border-left:3px solid var(--amber)">
+        <span class="sl-n">2</span><span class="sl-name">HBM (High Bandwidth Memory)</span>
+        <span class="sl-desc">SK Hynix / Micron / Samsung HBM3e — 141 GB/s bandwidth per stack, 8–12 stacks per GPU. HBM3e supply constrained through 2025.</span>
       </div>
-
-      <div class="stack-layer" id="card-l1" style="border-top:3px solid var(--amber)" data-search-text="physical infrastructure power land cooling datacenter galaxy helios ERCOT west texas foundation">
-        <div class="stack-header" onclick="toggleStack('l1')">
-          <div class="stack-icon">⚡</div>
-          <div class="stack-name" style="color:var(--amber)">Physical Infrastructure</div>
-          <div class="stack-players">Galaxy Helios · Power · Land · Cooling</div>
-          <div class="stack-actions">
-            <button class="action-btn" onclick="toggleHighlight(event,'l1')">⭐</button>
-            <button class="action-btn" onclick="toggleNote(event,'l1')">✏️</button>
-          </div>
-        </div>
-        <div class="stack-expand" id="body-l1">
-          整个AI stack的最底层：<strong>电力、冷却、土地、网络连接</strong>。这是当前最稀缺的资源——比GPU更难快速复制。<br><br>
-          Approved power capacity + grid interconnection是需要3–7年才能获得的资产，Galaxy已拿到这张"入场券"。这是整条价值链中最不可替代的一层。
-        </div>
-        <div class="note-display" id="note-display-l1" style="display:none"></div>
-        <div class="note-zone" id="note-l1"><textarea id="note-input-l1" placeholder="Add notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('l1')">Save</button><button class="note-discard" onclick="toggleNote(null,'l1')">Cancel</button></div></div>
+      <div class="stack-layer" style="border-left:3px solid var(--red)">
+        <span class="sl-n">1</span><span class="sl-name">GPU Silicon</span>
+        <span class="sl-desc">NVIDIA H100/H200/B200 (TSMC 4N/3nm) or AMD MI300X. Allocation from NVIDIA is often the single binding constraint on cluster deployment timelines.</span>
       </div>
     </div>
-  </div><!-- /panel-stack -->
+    <div class="note-section">
+      <div class="note-toggle" onclick="toggleNote('n10')">✏ Notes</div>
+      <div class="note-wrap" id="n10"><textarea class="note-ta" id="nt10" placeholder="Your notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('10')">Save</button><button class="note-cancel" onclick="toggleNote('n10')">Cancel</button></div><div class="note-display" id="nd10"></div></div>
+    </div>
+  </div></div>
+</div>
 
-  <!-- ═══════════════════════════════════════════════════════
-       PANEL 3 · GALAXY
-  ═══════════════════════════════════════════════════════ -->
-  <div class="panel" id="panel-galaxy">
-    <div class="galaxy-grid">
-      <div class="g-card g-adv">
-        <h3>✅ Galaxy的优势</h3>
-        · 已有ERCOT approved power capacity<br>
-        · Substation &amp; transmission access已就位<br>
-        · 比特币矿场→数据中心：先发优势显著<br>
-        · West Texas大规模可扩展（multi-GW campus）<br>
-        · 风能/太阳能丰富，stranded energy可利用<br>
-        · 电力市场去管制化，time-to-power快<br>
-        · 数字资产DNA适配重资产/高电耗运营模式
+<!-- STEP 11 -->
+<div class="step phase4" id="s11" data-kw="commissioning testing checklist revenue NOC operations acceptance RCD rent commencement">
+  <div class="step-header" onclick="toggle('s11')">
+    <span class="step-num">11</span>
+    <div class="step-meta">
+      <div class="step-title">Commissioning &amp; Revenue Commencement</div>
+      <div class="step-sub">Integrated system testing, tenant acceptance, and the moment billing begins</div>
+    </div>
+    <div class="step-right">
+      <button class="star-btn" onclick="star(event,'s11')" title="Star">⭐</button>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+  <div class="step-body"><div class="step-body-inner">
+    <p>Commissioning validates every system performs to specification under full load. For hyperscale tenants, this includes their own 30–60 day acceptance protocol before Rent Commencement Date (RCD) — the contractual trigger for billing. RCD is locked at lease execution, not at acceptance.</p>
+    <div class="info-table">
+      <div class="ir"><span class="ir-k">Integrated System Test</span><span class="ir-v">Full-load testing of power, cooling, and fire suppression under simulated failure conditions (concurrent maintainability test)</span></div>
+      <div class="ir"><span class="ir-k">ASHRAE Compliance</span><span class="ir-v">Temperature/humidity validation per ASHRAE A1/A2 standards for IT equipment environments</span></div>
+      <div class="ir"><span class="ir-k">Tenant Acceptance</span><span class="ir-v">Hyperscalers run 30–60 day acceptance protocols — IT equipment load test under their own workloads before signing off</span></div>
+      <div class="ir"><span class="ir-k">Rent Commencement</span><span class="ir-v">Billing begins per RCD — contractually fixed at lease execution. Developer bears risk of delays past RCD.</span></div>
+      <div class="ir"><span class="ir-k">Operations</span><span class="ir-v">24/7 NOC, remote hands, predictive maintenance (vibration analysis, thermal imaging), quarterly generator load tests</span></div>
+    </div>
+    <div class="tags">
+      <span class="tag g">Revenue Begins</span>
+      <span class="tag b">Full Stabilization</span>
+    </div>
+    <div class="note-section">
+      <div class="note-toggle" onclick="toggleNote('n11')">✏ Notes</div>
+      <div class="note-wrap" id="n11"><textarea class="note-ta" id="nt11" placeholder="Your notes…"></textarea><div class="note-actions"><button class="note-save" onclick="saveNote('11')">Save</button><button class="note-cancel" onclick="toggleNote('n11')">Cancel</button></div><div class="note-display" id="nd11"></div></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ══════════════════════════════════
+  REVENUE MODELS
+══════════════════════════════════ -->
+<div class="phase-header" style="margin-top:52px">
+  <span class="phase-badge ctx">Revenue</span>
+  <span class="phase-name">Monetization Models</span>
+  <div class="phase-line"></div>
+</div>
+
+<div class="revenue-section">
+  <p style="margin-bottom:4px">Once the facility is commissioned, two distinct business models determine your revenue trajectory, margin profile, and capital intensity. They are not mutually exclusive — many campuses blend both.</p>
+
+  <div class="rev-cards">
+
+    <!-- COLOCATION -->
+    <div class="rev-card">
+      <div class="rev-card-header amber-h">
+        <div class="rev-label a">Model A</div>
+        <div class="rev-title">Colocation</div>
+        <div class="rev-sub">Lease power capacity to tenants who bring their own hardware. Long-term, predictable, bond-like cashflows.</div>
       </div>
-      <div class="g-card g-risk">
-        <h3>⚠️ 主要风险</h3>
-        · Power delivery delays（行业共性）<br>
-        · <strong>客户集中风险</strong>：CoreWeave依赖度高<br>
-        · Execution complexity at multi-GW scale<br>
-        · Transformer &amp; 供应链瓶颈<br>
-        · AI基础设施市场竞争者快速增加<br>
-        · CoreWeave自身的客户集中和财务风险
-      </div>
-      <div class="g-card g-roi">
-        <h3>📊 ROI框架</h3>
-        <strong>Revenue</strong> = Committed MW × $/MW + Maintenance（facility ops, repairs, staffing, security）<br><br>
-        <strong>真正equity return要看：</strong>
-        ROIC / Levered IRR · Stabilized Yield on Cost（= 年化EBITDA ÷ 总开发Capex）<br><br>
-        <strong>典型目标范围：</strong>Levered IRR 10–15%，Yield on Cost 8–12%
+      <div class="rev-body">
+        <h4>Pricing Tiers (US, H2 2025)</h4>
+        <div class="price-table">
+          <div class="price-row"><span>Tier</span><span>Deployment Size</span><span>$/kW/Month</span></div>
+          <div class="price-row"><span class="pr-tier">Retail</span><span class="pr-size">≤ 250 kW</span><span class="pr-price a">$200–$300</span></div>
+          <div class="price-row"><span class="pr-tier">Wholesale</span><span class="pr-size">250 kW – 4 MW</span><span class="pr-price a">$130–$215</span></div>
+          <div class="price-row"><span class="pr-tier">Hyperscale</span><span class="pr-size">≥ 4 MW</span><span class="pr-price a">$100–$160</span></div>
+        </div>
+
+        <div class="insight" style="margin:10px 0">
+          <div class="insight-title">📈 Market Rate Trend</div>
+          <div class="insight-body">US wholesale avg hit <strong>$196/kW/mo</strong> in H2 2025 (+6.5% YoY). Northern Virginia breached <strong>$215/kW/mo</strong> — record high. 10MW+ deals rose 19% as vacancy hit a record-low 1.6%.</div>
+        </div>
+
+        <h4>Revenue Formula</h4>
+        <div class="formula-box">
+          Annual Revenue = MW × $/kW/mo × 1,000 × 12<br>
+          <span>100 MW @ $130/kW/mo → <strong style="color:var(--amber)">$156M ARR</strong></span><br>
+          <span>100 MW @ $160/kW/mo → <strong style="color:var(--green)">$192M ARR</strong></span>
+        </div>
+
+        <h4>Unit Economics</h4>
+        <div class="econ-row"><span class="econ-k">Development Cost</span><span class="econ-v">$10–14M / MW</span></div>
+        <div class="econ-row"><span class="econ-k">Gross Margin (NNN)</span><span class="econ-v good">65–75%</span></div>
+        <div class="econ-row"><span class="econ-k">EBITDA Margin</span><span class="econ-v good">50–60%</span></div>
+        <div class="econ-row"><span class="econ-k">Unlevered ROIC</span><span class="econ-v warn">12–18%</span></div>
+        <div class="econ-row"><span class="econ-k">Stabilized Cap Rate</span><span class="econ-v warn">4.5–5.5%</span></div>
+        <div class="econ-row"><span class="econ-k">Lease Term</span><span class="econ-v">10–20 years NNN</span></div>
+        <div class="econ-row"><span class="econ-k">Break-even (build vs. rent)</span><span class="econ-v">7–9 years at $10.7M/MW</span></div>
+
+        <h4>Pros &amp; Cons</h4>
+        <div class="pros-cons">
+          <div class="pros">
+            <div class="pros-title">✓ Strengths</div>
+            <ul>
+              <li>Predictable long-term cashflows</li>
+              <li>Investment-grade tenants (MSFT, GOOGL)</li>
+              <li>Asset-light on IT capital</li>
+              <li>Financeable (ABS, REIT structure)</li>
+              <li>No GPU depreciation risk</li>
+            </ul>
+          </div>
+          <div class="cons">
+            <div class="cons-title">✗ Risks</div>
+            <ul>
+              <li>Lower revenue ceiling than GPUaaS</li>
+              <li>Tenant concentration risk</li>
+              <li>Long sales cycle (12–24 months)</li>
+              <li>Power costs borne by developer pre-lease</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="tags" style="margin-top:12px">
+          <span class="tag a">NNN Lease</span>
+          <span class="tag g">Investment Grade Tenant</span>
+          <span class="tag n">REIT / ABS</span>
+        </div>
       </div>
     </div>
 
-    <div class="questions">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:10px;letter-spacing:1.5px">深度问题 · Key Questions</div>
-      <div class="q-item"><div class="q-label">Q1 · 战略</div>Galaxy如何在speed-to-market与长期infrastructure optimization之间取得平衡？在multi-GW campus的规模下，这两者的张力如何体现？</div>
-      <div class="q-item"><div class="q-label">Q2 · 竞争护城河</div>相对于越来越多的AI基础设施进入者，Helios的差异化究竟有多强？approved power之外还有什么moat？</div>
-      <div class="q-item"><div class="q-label">Q3 · 客户多元化</div>团队如何考虑随时间推进、超越CoreWeave的客户多元化？pipeline里还有哪些类型的潜在客户？</div>
-      <div class="q-item"><div class="q-label">Q4 · 规模化能力</div>将Galaxy扩展为真正的multi-campus AI基础设施平台，哪些能力是最critical的？执行层面最大的风险是什么？</div>
-      <div class="q-item"><div class="q-label">Q5 · 想学的内容</div>Power markets和grid interconnection processes（ERCOT, MISO, PJM）/ Hyperscale/colocation leasing结构（sale-leaseback）/ 如何解读LOIs, PPAs, DSAs, development agreements, due diligence reports？</div>
-    </div>
-  </div><!-- /panel-galaxy -->
+    <!-- GPU AS A SERVICE -->
+    <div class="rev-card">
+      <div class="rev-card-header blue-h">
+        <div class="rev-label b">Model B</div>
+        <div class="rev-title">GPU-as-a-Service</div>
+        <div class="rev-sub">Own the GPUs. Rent compute capacity by the hour to AI developers, researchers, and enterprises.</div>
+      </div>
+      <div class="rev-body">
+        <h4>GPU Rental Pricing (May 2026)</h4>
+        <div class="price-table">
+          <div class="price-row"><span>GPU Type</span><span>Provider Type</span><span>$/GPU/Hour</span></div>
+          <div class="price-row"><span class="pr-tier">H100 SXM5</span><span class="pr-size">Boutique (spot)</span><span class="pr-price b">$1.03–$1.49</span></div>
+          <div class="price-row"><span class="pr-tier">H100 SXM5</span><span class="pr-size">Neocloud (OD)</span><span class="pr-price b">$2.29–$3.12</span></div>
+          <div class="price-row"><span class="pr-tier">H100 SXM5</span><span class="pr-size">Hyperscaler (OD)</span><span class="pr-price b">$3.00–$4.00</span></div>
+          <div class="price-row"><span class="pr-tier">B200 SXM6</span><span class="pr-size">Neocloud (spot)</span><span class="pr-price b">$2.12–$4.99</span></div>
+          <div class="price-row"><span class="pr-tier">B200 SXM6</span><span class="pr-size">AWS p6</span><span class="pr-price b">~$14.24</span></div>
+        </div>
 
-</div><!-- /main -->
+        <div class="insight" style="margin:10px 0">
+          <div class="insight-title">📊 Market Context</div>
+          <div class="insight-body">Neocloud GPUaaS revenues projected to exceed <strong>$65B by 2030</strong> (ABI Research). CoreWeave Q1 2026: <strong>$2.08B revenue (+112% YoY)</strong>, $99B backlog. AWS cut H100 rates ~44% in June 2025 — boutique prices followed.</div>
+        </div>
+
+        <h4>Revenue Formula</h4>
+        <div class="formula-box">
+          Annual Revenue = GPU count × $/hr × utilization × 8,760 hrs<br>
+          <span>10,000× H100 @ $2.50/hr × 85% util → <strong style="color:var(--blue)">$186M ARR</strong></span>
+        </div>
+
+        <h4>Unit Economics</h4>
+        <div class="econ-row"><span class="econ-k">GPU CapEx (H100)</span><span class="econ-v">$27K–$40K / unit</span></div>
+        <div class="econ-row"><span class="econ-k">Non-GAAP Gross Margin</span><span class="econ-v good">55–65% (at &gt;80% util)</span></div>
+        <div class="econ-row"><span class="econ-k">GAAP Gross Margin</span><span class="econ-v warn">14–16% (after depreciation)</span></div>
+        <div class="econ-row"><span class="econ-k">Breakeven Utilization</span><span class="econ-v bad">≥ 80% required</span></div>
+        <div class="econ-row"><span class="econ-k">GPU Depreciation Life</span><span class="econ-v">3–5 years typical</span></div>
+        <div class="econ-row"><span class="econ-k">Contract Type</span><span class="econ-v">Spot / Reserved (1-yr) / Bare Metal</span></div>
+        <div class="econ-row"><span class="econ-k">Market Size 2030E</span><span class="econ-v good">$65B+ (ABI Research)</span></div>
+
+        <h4>Key Players (Neoclouds)</h4>
+        <div class="econ-row"><span class="econ-k">CoreWeave (CRWV)</span><span class="econ-v">$4.9–5.1B 2025E rev, 300% YoY</span></div>
+        <div class="econ-row"><span class="econ-k">Lambda Labs</span><span class="econ-v">H100 @ $1.99–2.49/hr; research-focused</span></div>
+        <div class="econ-row"><span class="econ-k">RunPod</span><span class="econ-v">Marketplace model; spot from $1.19/hr</span></div>
+        <div class="econ-row"><span class="econ-k">Nebius</span><span class="econ-v">European neocloud; B200 @ $5.50/hr</span></div>
+
+        <h4>Pros &amp; Cons</h4>
+        <div class="pros-cons">
+          <div class="pros">
+            <div class="pros-title">✓ Strengths</div>
+            <ul>
+              <li>Higher revenue per MW (3–5×)</li>
+              <li>Shorter sales cycles</li>
+              <li>Serves AI-native customers</li>
+              <li>Flexible term structures</li>
+              <li>Massive TAM growth</li>
+            </ul>
+          </div>
+          <div class="cons">
+            <div class="cons-title">✗ Risks</div>
+            <ul>
+              <li>Heavy GPU CapEx ($27K–$40K/unit)</li>
+              <li>Utilization sensitivity (&lt;80% = losses)</li>
+              <li>Rapid GPU depreciation (3–5 yrs)</li>
+              <li>Price compression risk</li>
+              <li>NVIDIA allocation dependency</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="tags" style="margin-top:12px">
+          <span class="tag b">Neocloud</span>
+          <span class="tag p">GPU CapEx</span>
+          <span class="tag g">$65B TAM by 2030</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /rev-cards -->
+
+  <!-- COMPARISON -->
+  <div class="step" id="s-rev-cmp" style="margin-top:14px" data-kw="revenue compare colocation GPUaaS neocloud colo model comparison hybrid">
+    <div class="step-header" onclick="toggle('s-rev-cmp')">
+      <span class="step-num">—</span>
+      <div class="step-meta">
+        <div class="step-title">Colo vs. GPUaaS — Side-by-Side</div>
+        <div class="step-sub">How to choose, when to blend, and what drives the decision</div>
+      </div>
+      <div class="step-right">
+        <button class="star-btn" onclick="star(event,'s-rev-cmp')" title="Star">⭐</button>
+        <span class="chevron">›</span>
+      </div>
+    </div>
+    <div class="step-body"><div class="step-body-inner">
+      <div class="price-table">
+        <div class="price-row"><span>Dimension</span><span>Colocation</span><span>GPU-as-a-Service</span></div>
+        <div class="price-row"><span class="pr-tier">Revenue / MW</span><span>$1.3–1.9M ARR</span><span class="pr-price b">$4–8M ARR</span></div>
+        <div class="price-row"><span class="pr-tier">Gross Margin</span><span class="pr-price g">65–75% (NNN)</span><span>55–65% non-GAAP</span></div>
+        <div class="price-row"><span class="pr-tier">CapEx / MW</span><span>$10–14M (infra only)</span><span class="pr-price bad">$10–14M + $30–60M GPU</span></div>
+        <div class="price-row"><span class="pr-tier">Contract Term</span><span class="pr-price g">10–20 years NNN</span><span>Spot / 1-yr reserved</span></div>
+        <div class="price-row"><span class="pr-tier">Tenant Credit</span><span class="pr-price g">Investment grade</span><span>Mixed (startups–enterprises)</span></div>
+        <div class="price-row"><span class="pr-tier">Depreciation Risk</span><span class="pr-price g">Minimal (building)</span><span class="pr-price bad">High (GPU: 3–5 yr life)</span></div>
+        <div class="price-row"><span class="pr-tier">Utilization Risk</span><span class="pr-price g">None (take-or-pay)</span><span class="pr-price bad">Critical (&lt;80% = losses)</span></div>
+        <div class="price-row"><span class="pr-tier">Financeable via ABS</span><span class="pr-price g">Yes (well-established)</span><span>Emerging (GPU ABS forming)</span></div>
+        <div class="price-row"><span class="pr-tier">Time to Revenue</span><span>24–36 months</span><span>12–18 months (if GPU allocated)</span></div>
+        <div class="price-row"><span class="pr-tier">Best For</span><span>Developers, REITs, infra funds</span><span>Neoclouds, AI-native operators</span></div>
+      </div>
+      <div class="insight" style="margin-top:14px">
+        <div class="insight-title">💡 Hybrid Strategy</div>
+        <div class="insight-body">Many operators blend both: lease 60–70% of capacity to a hyperscale anchor on long-term NNN (de-risking financing), then operate the remaining 30–40% as GPU-as-a-Service to capture the higher revenue upside. The anchor tenant subsidizes the infrastructure; GPUaaS captures the margin premium.</div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+  AI VALUE CHAIN
+══════════════════════════════════ -->
+<div class="phase-header" style="margin-top:52px">
+  <span class="phase-badge ctx">Context</span>
+  <span class="phase-name">The AI Value Chain</span>
+  <div class="phase-line"></div>
+</div>
+
+<div class="step" id="s-ai" data-kw="AI value chain silicon foundry cloud hyperscaler application model inference stack">
+  <div class="step-header" onclick="toggle('s-ai')">
+    <span class="step-num">—</span>
+    <div class="step-meta">
+      <div class="step-title">Where Data Centers Sit in the AI Stack</div>
+      <div class="step-sub">From silicon fab to end-user application — the full value chain and where the money flows</div>
+    </div>
+    <div class="step-right">
+      <button class="star-btn" onclick="star(event,'s-ai')" title="Star">⭐</button>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+  <div class="step-body"><div class="step-body-inner">
+    <p>Data centers are the physical substrate of the AI economy — the layer that converts silicon and electricity into inference capacity. Understanding the stack clarifies both the investment thesis and the competitive dynamics at each layer.</p>
+    <div class="stack">
+      <div class="stack-layer" style="border-left:3px solid var(--green)">
+        <span class="sl-n">6</span><span class="sl-name" style="color:var(--green)">Applications</span>
+        <span class="sl-desc">ChatGPT, Copilot, Gemini, Claude, enterprise AI — end-user products consuming GPU compute at massive scale</span>
+      </div>
+      <div class="stack-layer" style="border-left:3px solid var(--green);opacity:0.8">
+        <span class="sl-n">5</span><span class="sl-name" style="color:var(--green)">Foundation Models</span>
+        <span class="sl-desc">OpenAI, Anthropic, Google DeepMind, Meta — training at 100K+ GPU scale, inference globally. The largest power consumers.</span>
+      </div>
+      <div class="stack-layer" style="border-left:3px solid var(--blue)">
+        <span class="sl-n">4</span><span class="sl-name" style="color:var(--blue)">Cloud / Hyperscalers</span>
+        <span class="sl-desc">AWS, Azure, GCP — aggregate GPU capacity, sell compute-hours, provide managed AI services. 70%+ of cloud revenue growth now AI-driven.</span>
+      </div>
+      <div class="stack-layer" style="border-left:3px solid var(--amber)">
+        <span class="sl-n">3</span><span class="sl-name" style="color:var(--amber)">★ Data Centers</span>
+        <span class="sl-desc">Physical infrastructure — power, cooling, connectivity. The scarce resource. $236B market in 2025 → $934B by 2030 (31.6% CAGR).</span>
+      </div>
+      <div class="stack-layer" style="border-left:3px solid var(--text-4)">
+        <span class="sl-n">2</span><span class="sl-name">Hardware (GPU / ASICs)</span>
+        <span class="sl-desc">NVIDIA (H100/B200), AMD MI300X, Google TPUs, Amazon Trainium. Installed inside data centers; owned by colo tenants or GPUaaS operators.</span>
+      </div>
+      <div class="stack-layer" style="border-left:3px solid var(--text-4)">
+        <span class="sl-n">1</span><span class="sl-name">Silicon Fabrication</span>
+        <span class="sl-desc">TSMC (3nm/2nm), Samsung — advanced node fabs producing the GPUs. Geopolitically concentrated; Taiwan accounts for 90%+ of leading-edge logic.</span>
+      </div>
+    </div>
+    <div class="info-table" style="margin-top:14px">
+      <div class="ir"><span class="ir-k">AI DC Market (2025)</span><span class="ir-v">$236B globally</span></div>
+      <div class="ir"><span class="ir-k">AI DC Market (2030E)</span><span class="ir-v">$934B — 31.6% CAGR</span></div>
+      <div class="ir"><span class="ir-k">GPU Market (2025)</span><span class="ir-v">$36.6B data center GPU segment</span></div>
+      <div class="ir"><span class="ir-k">Power Demand Growth</span><span class="ir-v">US data center power demand projected to double by 2030, reaching 8–12% of total US electricity consumption</span></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ══════════════════════════════════
+  GALAXY STRATEGIC THESIS
+══════════════════════════════════ -->
+<div class="galaxy-section">
+  <div class="galaxy-eyebrow">Investment Thesis — Galaxy Digital</div>
+  <div class="galaxy-title">Galaxy's Strategic Moat in AI Infrastructure</div>
+  <p>Galaxy's data center thesis is built on a timing advantage: by committing capital to power infrastructure before the AI buildout fully crystallized, they secured positions in constrained interconnection queues that new entrants cannot replicate on any reasonable timeline.</p>
+  <div class="moat-grid">
+    <div class="moat">
+      <div class="moat-title">⏱ Queue Position</div>
+      <div class="moat-desc">Interconnection applications filed early lock in queue position. Competitors starting today face 3–7 year waits in most markets. This advantage cannot be purchased — only earned by acting first.</div>
+    </div>
+    <div class="moat">
+      <div class="moat-title">⚡ Power Optionality</div>
+      <div class="moat-desc">Secured power capacity can be dynamically allocated between AI compute, Bitcoin mining, or leased to third parties — flexibility that pure-play data center developers lack.</div>
+    </div>
+    <div class="moat">
+      <div class="moat-title">🔄 Crypto → AI Pivot</div>
+      <div class="moat-desc">Existing mining infrastructure (power connections, cooling, facilities) is partially repurposable for AI workloads at lower greenfield cost than purpose-built AI campuses.</div>
+    </div>
+    <div class="moat">
+      <div class="moat-title">💰 Capital Markets Access</div>
+      <div class="moat-desc">As a publicly traded firm with institutional relationships, Galaxy can finance at scale and structure creative JVs with hyperscalers or infrastructure funds across both colo and GPUaaS models.</div>
+    </div>
+  </div>
+  <div class="closing-quote">
+    "The race for AI supremacy is, in its most fundamental form, a race for electrons. The companies that control the power — and the infrastructure to deliver it reliably at massive scale — will define where the next decade of AI development actually happens."
+  </div>
+</div>
+
+</div><!-- /page -->
 
 <script>
-// ── STATE ────────────────────────────────────────────────────
-const state = {
-  openSteps:   new Set(),
-  openStacks:  new Set(),
-  highlights:  new Set(),
-  notes:       {},
-  openNotes:   new Set(),
-  searchQuery: '',
-  highlightMode: false,
-};
-
-// ── TABS ─────────────────────────────────────────────────────
-function switchTab(name, btn) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('panel-' + name).classList.add('active');
-  btn.classList.add('active');
-  if (state.searchQuery) applySearch(state.searchQuery);
+// ── TOGGLE STEP ──
+function toggle(id) {
+  document.getElementById(id).classList.toggle('open');
 }
 
-// ── STEPS ────────────────────────────────────────────────────
-function toggleStep(id) {
-  const card = document.getElementById('card-' + id);
-  const body = document.getElementById('body-' + id);
-  if (!card || !body) return;
-  const isOpen = state.openSteps.has(id);
-  if (isOpen) { state.openSteps.delete(id); card.classList.remove('open'); }
-  else         { state.openSteps.add(id);    card.classList.add('open'); }
-}
-
-// ── STACKS ───────────────────────────────────────────────────
-function toggleStack(id) {
-  const layer = document.getElementById('card-' + id);
-  const body  = document.getElementById('body-' + id);
-  if (!layer || !body) return;
-  const isOpen = state.openStacks.has(id);
-  if (isOpen) { state.openStacks.delete(id); layer.classList.remove('open'); }
-  else         { state.openStacks.add(id);    layer.classList.add('open'); }
-}
-
-// ── HIGHLIGHTS ───────────────────────────────────────────────
-function toggleHighlight(e, id) {
+// ── STAR ──
+function star(e, id) {
   e.stopPropagation();
-  const card = document.getElementById('card-' + id);
-  const btn  = e.currentTarget;
-  if (state.highlights.has(id)) {
-    state.highlights.delete(id);
-    card.classList.remove('highlighted');
-    btn.classList.remove('star-on');
-  } else {
-    state.highlights.add(id);
-    card.classList.add('highlighted');
-    btn.classList.add('star-on');
-  }
-}
-function clearAllHighlights() {
-  state.highlights.forEach(id => {
-    const card = document.getElementById('card-' + id);
-    if (card) { card.classList.remove('highlighted'); }
-    document.querySelectorAll(`#card-${id} .action-btn`).forEach(b => b.classList.remove('star-on'));
-  });
-  state.highlights.clear();
-}
-function toggleHighlightMode() {
-  state.highlightMode = !state.highlightMode;
-  document.getElementById('highlightsBtn').classList.toggle('active', state.highlightMode);
+  const el = document.getElementById(id);
+  el.classList.toggle('starred');
+  localStorage.setItem('star_'+id, el.classList.contains('starred') ? '1' : '');
 }
 
-// ── NOTES ────────────────────────────────────────────────────
-function toggleNote(e, id) {
-  if (e) e.stopPropagation();
-  const zone = document.getElementById('note-' + id);
-  if (!zone) return;
-  const isOpen = state.openNotes.has(id);
-  if (isOpen) { zone.classList.remove('open'); state.openNotes.delete(id); }
-  else         { zone.classList.add('open');    state.openNotes.add(id);
-    // Pre-fill with existing note
-    const inp = document.getElementById('note-input-' + id);
-    if (inp && state.notes[id]) inp.value = state.notes[id];
-    if (inp) setTimeout(() => inp.focus(), 50);
-  }
+let starFilter = false;
+function toggleStarFilter() {
+  starFilter = !starFilter;
+  document.getElementById('starBtn').classList.toggle('active', starFilter);
+  applyFilter(document.getElementById('searchInput').value);
+}
+function clearStars() {
+  document.querySelectorAll('.step.starred').forEach(el => {
+    el.classList.remove('starred');
+    localStorage.removeItem('star_'+el.id);
+  });
+  starFilter = false;
+  document.getElementById('starBtn').classList.remove('active');
+  applyFilter('');
+}
+
+// ── SEARCH ──
+function openSearch() {
+  document.getElementById('searchOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('searchInput').focus(), 50);
+}
+function closeSearch() {
+  document.getElementById('searchOverlay').classList.remove('open');
+  document.getElementById('searchInput').value = '';
+  applyFilter('');
+}
+function closeIfBackdrop(e) {
+  if (e.target === document.getElementById('searchOverlay')) closeSearch();
+}
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
+  if (e.key === 'Escape') closeSearch();
+});
+function doSearch(q) { applyFilter(q); }
+function applyFilter(q) {
+  const term = q.toLowerCase().trim();
+  document.querySelectorAll('.step').forEach(el => {
+    const text = (el.innerText + ' ' + (el.dataset.kw || '')).toLowerCase();
+    const matchSearch = !term || text.includes(term);
+    const matchStar = !starFilter || el.classList.contains('starred');
+    el.classList.toggle('hidden', !(matchSearch && matchStar));
+  });
+}
+
+// ── NOTES ──
+function toggleNote(id) {
+  document.getElementById(id).classList.toggle('open');
 }
 function saveNote(id) {
-  const inp = document.getElementById('note-input-' + id);
-  if (!inp) return;
-  const text = inp.value.trim();
-  state.notes[id] = text;
-  // Show note display
-  const display = document.getElementById('note-display-' + id);
-  if (display) {
-    if (text) {
-      display.style.display = 'block';
-      display.innerHTML = `<div class="note-display-header"><span class="note-label">📝 NOTE</span><button class="note-edit-btn" onclick="toggleNote(null,'${id}')">Edit</button></div>${escapeHtml(text)}`;
-    } else {
-      display.style.display = 'none';
-    }
-  }
-  toggleNote(null, id);
+  const val = document.getElementById('nt'+id).value.trim();
+  const disp = document.getElementById('nd'+id);
+  if (val) { disp.textContent = val; disp.style.display = 'block'; localStorage.setItem('note_'+id, val); }
+  else { disp.style.display = 'none'; localStorage.removeItem('note_'+id); }
+  document.getElementById('n'+id).classList.remove('open');
 }
-function escapeHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-}
-
-// ── EXPORT NOTES ─────────────────────────────────────────────
 function exportNotes() {
-  const entries = Object.entries(state.notes).filter(([,v]) => v.trim());
-  if (!entries.length) { alert('No notes saved yet.'); return; }
-  const lines = entries.map(([k,v]) => `[${k}]\n${v}`).join('\n\n---\n\n');
-  const blob = new Blob(['AI Infrastructure Roadmap Notes\n' + new Date().toLocaleDateString() + '\n\n' + lines], {type: 'text/plain'});
+  let out = 'AI Infrastructure Roadmap — Notes Export\n' + '='.repeat(46) + '\n\n';
+  let hasNotes = false;
+  document.querySelectorAll('.step').forEach(el => {
+    const rawId = el.id.replace('s','');
+    const val = localStorage.getItem('note_'+rawId);
+    if (val) {
+      hasNotes = true;
+      const title = el.querySelector('.step-title')?.textContent || el.id;
+      out += `[ ${title} ]\n${val}\n\n`;
+    }
+  });
+  if (!hasNotes) { alert('No notes saved yet.'); return; }
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'roadmap-notes.txt';
+  a.href = URL.createObjectURL(new Blob([out], {type:'text/plain'}));
+  a.download = 'datacenter_notes.txt';
   a.click();
 }
 
-// ── SEARCH ───────────────────────────────────────────────────
-function handleSearch(q) {
-  state.searchQuery = q.trim().toLowerCase();
-  const clearBtn = document.getElementById('searchClear');
-  clearBtn.style.display = q ? 'block' : 'none';
-  applySearch(state.searchQuery);
-}
-
-function applySearch(q) {
-  const allCards = document.querySelectorAll('.step-card, .stack-layer');
-  const countEl  = document.getElementById('searchCount');
-  const infoEl   = document.getElementById('searchInfo');
-
-  // Remove old highlights
-  document.querySelectorAll('mark.hl').forEach(m => {
-    m.parentNode.replaceChild(document.createTextNode(m.textContent), m);
-  });
-
-  if (!q) {
-    allCards.forEach(c => { c.classList.remove('dimmed','search-match'); });
-    countEl.textContent = '';
-    infoEl.classList.remove('visible');
-    return;
-  }
-
-  let matchCount = 0;
-  allCards.forEach(card => {
-    const searchText = (card.dataset.searchText || '') + ' ' + (card.textContent || '');
-    const matches = searchText.toLowerCase().includes(q);
-    if (matches) {
-      matchCount++;
-      card.classList.remove('dimmed');
-      card.classList.add('search-match');
-      // Auto-open matched step
-      const id = card.id.replace('card-','');
-      if (card.classList.contains('step-card') && !state.openSteps.has(id)) {
-        state.openSteps.add(id); card.classList.add('open');
-      }
-      if (card.classList.contains('stack-layer') && !state.openStacks.has(id)) {
-        state.openStacks.add(id); card.classList.add('open');
-      }
-    } else {
-      card.classList.add('dimmed');
-      card.classList.remove('search-match');
+// ── RESTORE STATE ──
+window.addEventListener('load', () => {
+  const noteIds = ['1','2','3','4','5','6','7','8','9','10','11','rev-cmp','ai'];
+  noteIds.forEach(id => {
+    const stored = localStorage.getItem('note_'+id);
+    if (stored) {
+      const ta = document.getElementById('nt'+id);
+      const disp = document.getElementById('nd'+id);
+      if (ta) ta.value = stored;
+      if (disp) { disp.textContent = stored; disp.style.display = 'block'; }
     }
   });
-
-  countEl.textContent = matchCount ? `${matchCount} match${matchCount > 1 ? 'es' : ''}` : 'No matches';
-  infoEl.textContent = q ? `Showing results for "${q}" — ${matchCount} card${matchCount !== 1 ? 's' : ''} matched` : '';
-  infoEl.classList.toggle('visible', !!q);
-}
-
-function clearSearch() {
-  const inp = document.getElementById('searchInput');
-  inp.value = '';
-  handleSearch('');
-  inp.focus();
-}
-
-// ── KEYBOARD SHORTCUTS ────────────────────────────────────────
-document.addEventListener('keydown', e => {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-    e.preventDefault();
-    document.getElementById('searchInput').focus();
-  }
-  if (e.key === 'Escape') {
-    clearSearch();
-    document.getElementById('searchInput').blur();
-  }
+  document.querySelectorAll('.step').forEach(el => {
+    if (localStorage.getItem('star_'+el.id) === '1') el.classList.add('starred');
+  });
 });
-
-// Hint in placeholder
-document.getElementById('searchInput').placeholder = 'Search (⌘K) — substation, ERCOT, IRR…';
 </script>
 </body>
 </html>
